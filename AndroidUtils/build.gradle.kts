@@ -1,5 +1,6 @@
 plugins {
     id("com.android.library")
+    id("maven-publish")
 }
 
 android {
@@ -22,6 +23,7 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_14
         targetCompatibility = JavaVersion.VERSION_14
@@ -40,4 +42,12 @@ dependencies {
 
     //webRTC
     implementation("com.mesibo.api:webrtc:1.0.5")
+}
+
+configure<PublishingExtension> {
+    publications.create<MavenPublication>("release") {
+        groupId = "com.github.teranes10"
+        artifactId = "androidutils"
+        version = "1.0.0"
+    }
 }
