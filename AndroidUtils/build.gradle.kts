@@ -48,6 +48,6 @@ configure<PublishingExtension> {
     publications.create<MavenPublication>("release") {
         groupId = "com.github.teranes10"
         artifactId = "androidutils"
-        version = "1.0.0"
+        version = "1.0.1"
     }
 }
