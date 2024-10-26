@@ -19,6 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "AndroidUtilsApp"
+rootProject.name = "AndroidUtils"
 include(":app")
-include(":AndroidUtils")
