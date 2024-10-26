@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <color name="backgroundColor">#E2E8F0</color>
+    <color name="colorPrimary">#85c389</color>
+    <color name="colorSecondary">#f59e0d</color>
+    <color name="lightbackground">#fffdaf</color>
+    <color name="pastel_eucalyptus">#c2f1e1</color>
+
+    <color name="cockatoo">#ffd039</color>
+    <color name="eucalyptus">#00ad7c</color>
+    <color name="lightGray">#D3D3D3</color>
+
+    <color name="red">#FF0000</color>
+
+    <color name="snackbar_success">#4CAF50</color> <!-- Green -->
+    <color name="snackbar_failure">#F44336</color> <!-- Red -->
+
+    <color name="pastel_yellow">#FFF9C4</color>
+    <color name="dark_blue">#00008B</color>
+    <color name="navy_blue">#000080</color>
+
+</resources>
