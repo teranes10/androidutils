@@ -39,12 +39,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-import au.com.softclient.mydevices.Constants;
-import au.com.softclient.mydevices.helpers.preferences.UrlPreferences;
-
 public class NetworkUtil {
     private static final int NETWORK_UTIL_CONNECTION_TAG = 10000;
-    private static final String TAG = Constants.TAG + "NetworkUtil";
+    private static final String TAG =  "NetworkUtil";
 
     public static boolean isConnected(Context context) {
         ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -141,7 +138,7 @@ public class NetworkUtil {
         return _connectionStatus;
     }
 
-    public static void startConnectionStatusUpdates(Context ctx) {
+    public static void startConnectionStatusUpdates(Context ctx, String url) {
         try {
             NetworkRequest networkRequest = new NetworkRequest.Builder()
                     .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
@@ -169,7 +166,7 @@ public class NetworkUtil {
                                     currentInterval[0] *= 2;
                                 }
                             }
-                            Boolean isReachable = isReachable(ctx, UrlPreferences.getUrl(ctx));
+                            Boolean isReachable = isReachable(ctx, url);
                             Log.i(TAG, (isReachable ? "" : "not") + " connected to the internet.");
                             _connectionStatus.postValue(isReachable);
                             _handler.postDelayed(this, currentInterval[0]);

@@ -17,7 +17,6 @@ import com.microsoft.signalr.HubConnectionState;
 
 import java.util.concurrent.CompletableFuture;
 
-import au.com.softclient.mydevices.Constants;
 import io.reactivex.rxjava3.core.Single;
 
 public abstract class SignalRUtil {
@@ -42,7 +41,7 @@ public abstract class SignalRUtil {
         }
     };
 
-    private static final String TAG = Constants.TAG + ":SignalR";
+    private static final String TAG = "SignalR";
 
     public SignalRUtil(Context context) {
         this._ctx = context;
@@ -104,7 +103,7 @@ public abstract class SignalRUtil {
     private void startObserveInternetConnection() {
         new Handler(Looper.getMainLooper()).post(() -> {
             NetworkUtil.getLiveConnectionStatus().observeForever(_internetConnectionObserver);
-            NetworkUtil.startConnectionStatusUpdates(_ctx);
+            NetworkUtil.startConnectionStatusUpdates(_ctx, setKeepAliveUrl());
         });
     }
 
@@ -118,6 +117,8 @@ public abstract class SignalRUtil {
     protected abstract String setTag();
 
     protected abstract String setUrl();
+
+    protected abstract String setKeepAliveUrl();
 
     protected abstract String setToken();
 

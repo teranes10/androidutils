@@ -3,6 +3,8 @@ package com.github.teranes10.androidutils.utils;
 import android.os.Environment;
 import android.util.Log;
 
+import com.github.teranes10.androidutils.models.Result;
+
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPFile;
@@ -14,8 +16,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.concurrent.CompletableFuture;
-
-import au.com.softclient.mydevices.models.response.Result;
 
 public class FtpUtil {
     private static final String TAG = "FtpUtil";

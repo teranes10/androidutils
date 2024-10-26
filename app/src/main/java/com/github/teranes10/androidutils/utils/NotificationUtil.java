@@ -18,9 +18,9 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
-import java.util.Random;
+import com.github.teranes10.androidutils.R;
 
-import au.com.softclient.mydevices.R;
+import java.util.Random;
 
 public class NotificationUtil extends ContextWrapper {
     private static final String TAG = "NotificationHelper";
@@ -67,7 +67,7 @@ public class NotificationUtil extends ContextWrapper {
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(title)
                 .setContentText(body)
-                .setSmallIcon(R.drawable.baseline_notifications_active_24)
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setStyle(new NotificationCompat.BigTextStyle().setSummaryText("summary").setBigContentTitle(title).bigText(body))
                 .setContentIntent(pendingIntent)
@@ -93,7 +93,7 @@ public class NotificationUtil extends ContextWrapper {
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(title)
                 .setContentText(body)
-                .setSmallIcon(R.drawable.baseline_notifications_active_24)
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setStyle(new NotificationCompat.BigTextStyle().setSummaryText("summary").setBigContentTitle(title).bigText(body))
                 .setAutoCancel(true)

@@ -48,6 +48,22 @@ dependencies {
 
     // WebRTC
     implementation("com.mesibo.api:webrtc:1.0.5")
+
+    // Room
+    implementation("androidx.room:room-runtime:2.5.2")
+    annotationProcessor("androidx.room:room-compiler:2.5.2")
+
+    //ftp
+    implementation("commons-net:commons-net:3.10.0")
+
+    //SignalR
+    implementation("com.microsoft.signalr:signalr:8.0.8")
+    implementation("org.slf4j:slf4j-api:2.0.7")
+
+    //Location
+    implementation("com.google.android.gms:play-services-location:21.0.1")
+    implementation("com.google.android.gms:play-services-places:17.0.0")
+    implementation("com.google.maps.android:android-maps-utils:3.4.0")
 }
 
 afterEvaluate {
@@ -57,7 +73,7 @@ afterEvaluate {
                 from(components["release"])
                 groupId = "com.github.teranes10"
                 artifactId = "androidutils"
-                version = "1.0.1"
+                version = "1.0.3"
             }
         }
         repositories {
