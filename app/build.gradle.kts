@@ -6,6 +6,7 @@ plugins {
 android {
     namespace = "com.github.teranes10.androidutils"
     compileSdk = 34
+    viewBinding.isEnabled = true
 
     defaultConfig {
         minSdk = 26
@@ -73,7 +74,7 @@ afterEvaluate {
                 from(components["release"])
                 groupId = "com.github.teranes10"
                 artifactId = "androidutils"
-                version = "1.0.4"
+                version = "1.0.5"
             }
         }
         repositories {
