@@ -41,7 +41,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class NetworkUtil {
     private static final int NETWORK_UTIL_CONNECTION_TAG = 10000;
-    private static final String TAG =  "NetworkUtil";
+    private static final String TAG = "NetworkUtil";
 
     public static boolean isConnected(Context context) {
         ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -203,14 +203,10 @@ public class NetworkUtil {
         }
     }
 
-    public static CompletableFuture<Boolean> isReachableAsync(Context context, String url, int timeout) {
+    public static CompletableFuture<Boolean> isReachableAsync(String url, int timeout) {
         return CompletableFuture.supplyAsync(() -> {
             TrafficStats.setThreadStatsTag(NETWORK_UTIL_CONNECTION_TAG); // Tagging the current thread
             try {
-                if (!isConnected(context)) {
-                    return false;
-                }
-
                 URL connectionUrl = new URL(url);
                 HttpURLConnection connection = (HttpURLConnection) connectionUrl.openConnection();
                 connection.setConnectTimeout(timeout);
