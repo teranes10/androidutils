@@ -74,7 +74,7 @@ afterEvaluate {
                 from(components["release"])
                 groupId = "com.github.teranes10"
                 artifactId = "androidutils"
-                version = "1.0.6"
+                version = "1.0.7"
             }
         }
         repositories {

@@ -10,7 +10,7 @@ public class DefaultConnectionUtil extends EventUtil<ConnectionUtil.ConnectionLi
     private final ConnectionUtil _connectionUtil;
 
     private static DefaultConnectionUtil instance;
-    private static String _url = "https://1.1.1.1/cdn-cgi/trace";
+    private static String _url = "https://www.google.com/generate_204";
     private static int _interval = 30 * 1000;
 
     private DefaultConnectionUtil(Context ctx, String url, int interval) {

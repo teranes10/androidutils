@@ -97,12 +97,13 @@ public class ConnectionUtil {
         public void run() {
             NetworkUtil.isReachableAsync(url, CONNECTION_TIMEOUT)
                     .thenAcceptAsync(isReachable -> {
+                        Log.i(TAG, "checking internet reachability: " + isReachable);
                         updateInternetAvailability(isReachable);
                         if (handler != null) {
                             handler.postDelayed(this, INTERNET_CHECKING_INTERVAL);
                         }
                     }).exceptionally(e -> {
-                        Log.e(TAG, "Error checking internet reachability: ", e);
+                        Log.e(TAG, "checking internet reachability: ", e);
                         return null;
                     });
         }
