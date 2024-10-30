@@ -211,13 +211,17 @@ public class NetworkUtil {
                 HttpURLConnection connection = (HttpURLConnection) connectionUrl.openConnection();
                 connection.setConnectTimeout(timeout);
                 connection.connect();
-                return connection.getResponseCode() == 200;
+                return isResponseSuccessful(connection.getResponseCode());
             } catch (Exception e) {
                 return false;
             } finally {
                 TrafficStats.clearThreadStatsTag(); // Clear the tag after the network operation is done
             }
         });
+    }
+
+    public static boolean isResponseSuccessful(int responseCode) {
+        return responseCode >= 200 && responseCode < 300;
     }
 
     public static boolean isReachable(Context context, String url) {
