@@ -8,6 +8,8 @@ import androidx.room.RawQuery;
 import androidx.sqlite.db.SimpleSQLiteQuery;
 import androidx.sqlite.db.SupportSQLiteQuery;
 
+import com.github.teranes10.androidutils.models.Pagination;
+
 import java.lang.reflect.ParameterizedType;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;

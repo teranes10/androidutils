@@ -17,8 +17,6 @@ public abstract class TimerUtil {
     public void start() {
         if (_handlerThread == null) {
             _handlerThread = new HandlerThread(getTag());
-        }
-        if (!_handlerThread.isAlive()) {
             _handlerThread.start();
         }
         if (_handler == null) {

@@ -1,6 +1,7 @@
 package com.github.teranes10.androidutils.utils;
 
 import android.os.Handler;
+import android.os.Looper;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -9,8 +10,9 @@ import java.util.function.Consumer;
 
 public abstract class EventUtil<T> {
     private final List<T> listeners = Collections.synchronizedList(new ArrayList<>());
+    private Handler handler;
 
-    public boolean addListener(T listener) {
+    protected boolean addListener(T listener) {
         if (listener == null) return false;
 
         synchronized (listeners) {
@@ -19,7 +21,7 @@ public abstract class EventUtil<T> {
         }
     }
 
-    public boolean removeListener(T listener) {
+    protected boolean removeListener(T listener) {
         if (listener == null) return false;
 
         synchronized (listeners) {
@@ -43,9 +45,11 @@ public abstract class EventUtil<T> {
         }
     }
 
-    private final Handler handler = new Handler();
-
     protected void notifyListeners(Consumer<T> func, int timerInMillis) {
+        if (handler == null) {
+            handler = new Handler(Looper.getMainLooper());
+        }
+
         handler.removeCallbacksAndMessages(null);
         handler.postDelayed(() -> notifyListeners(func), timerInMillis);
     }

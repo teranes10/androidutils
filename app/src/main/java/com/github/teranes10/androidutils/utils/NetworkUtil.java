@@ -6,28 +6,26 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
-import android.net.Network;
-import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
-import android.net.NetworkRequest;
 import android.net.TrafficStats;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
-import android.os.Handler;
+import android.os.Build;
 import android.telephony.CellIdentityGsm;
 import android.telephony.CellIdentityLte;
+import android.telephony.CellIdentityNr;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.CellInfoLte;
+import android.telephony.CellInfoNr;
 import android.telephony.CellSignalStrengthGsm;
 import android.telephony.CellSignalStrengthLte;
+import android.telephony.CellSignalStrengthNr;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
-import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -40,11 +38,11 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class NetworkUtil {
-    private static final int NETWORK_UTIL_CONNECTION_TAG = 10000;
+    private static final int NETWORK_UTIL_CONNECTION_TAG = 123123;
     private static final String TAG = "NetworkUtil";
 
     public static boolean isConnected(Context context) {
-        ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        ConnectivityManager connectivityManager = (ConnectivityManager) context.getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
         if (networkInfo != null) {
             return networkInfo.isConnected();
@@ -53,21 +51,19 @@ public class NetworkUtil {
         return false;
     }
 
-    public static String getSSID(Context context) {
-        return getWifiInfo(context).getSSID();
+    public static String getSSID(WifiInfo wifiInfo) {
+        return wifiInfo.getSSID();
     }
 
-    public static String getBSSID(Context context) {
-        return getWifiInfo(context).getBSSID();
+    public static String getBSSID(WifiInfo wifiInfo) {
+        return wifiInfo.getBSSID();
     }
 
-    public static String getLinkSpeed(Context context) {
-        return getWifiInfo(context).getLinkSpeed() + "Mbps";
+    public static String getLinkSpeed(WifiInfo wifiInfo) {
+        return wifiInfo.getLinkSpeed() + "Mbps";
     }
 
-    public static String getIpAddress(Context context) {
-        WifiInfo wifiInfo = getWifiInfo(context);
-
+    public static String getIpAddress(WifiInfo wifiInfo) {
         @SuppressLint("DefaultLocale") String ipAddress = String.format("%d.%d.%d.%d",
                 (wifiInfo.getIpAddress() & 0xff), (wifiInfo.getIpAddress() >> 8 & 0xff),
                 (wifiInfo.getIpAddress() >> 16 & 0xff), (wifiInfo.getIpAddress() >> 24 & 0xff));
@@ -91,116 +87,58 @@ public class NetworkUtil {
         return ipAddress;
     }
 
-    public static String getSignalStrength(Context context) {
-        WifiInfo wifiInfo = getWifiInfo(context);
+    public static String getSignalStrength(WifiInfo wifiInfo) {
         @SuppressLint("DefaultLocale") String RSSI = String.format("%d", wifiInfo.getRssi());
         return RSSI + "dB";
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.R)
     public static CellTowerInfo getCellInfo(Context ctx) {
-        TelephonyManager tel = (TelephonyManager) ctx.getSystemService(Context.TELEPHONY_SERVICE);
+        // only works for the 1st registered SIM and only works with 4G
+        TelephonyManager tel = (TelephonyManager) ctx.getApplicationContext().getSystemService(Context.TELEPHONY_SERVICE);
         if (ActivityCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            List<CellInfo> infoList = tel.getAllCellInfo();
-            int lastIndex = infoList != null && infoList.size() > 0 ? infoList.size() - 1 : -1;
-            if (lastIndex > -1) {
-                CellInfo info = infoList.get(lastIndex);
-                if (info instanceof CellInfoGsm) {
-                    CellSignalStrengthGsm gsm = ((CellInfoGsm) info).getCellSignalStrength();
-                    CellIdentityGsm identityGsm = ((CellInfoGsm) info).getCellIdentity();
-                    return new CellTowerInfo(
-                            "GSM",
-                            "" + identityGsm.getCid(),
-                            "" + gsm.getDbm(),
-                            "" + identityGsm.getLac());
-                } else if (info instanceof CellInfoLte) {
-                    CellSignalStrengthLte lte = ((CellInfoLte) info).getCellSignalStrength();
-                    CellIdentityLte identityLte = ((CellInfoLte) info).getCellIdentity();
-                    return new CellTowerInfo(
-                            "LTE",
-                            "" + identityLte.getCi(),
-                            "" + lte.getDbm(),
-                            "" + identityLte.getTac());
+            List<android.telephony.CellInfo> infoList = tel.getAllCellInfo();
+            for (CellInfo info : infoList) {
+                if (info.isRegistered()) {
+                    if (info instanceof CellInfoGsm) {
+                        CellSignalStrengthGsm gsm = ((CellInfoGsm) info).getCellSignalStrength();
+                        CellIdentityGsm identityGsm = ((CellInfoGsm) info).getCellIdentity();
+                        return new CellTowerInfo(
+                                "GSM",
+                                "" + identityGsm.getCid(),
+                                "" + gsm.getDbm(),
+                                "" + identityGsm.getLac(),
+                                identityGsm.getMccString(),
+                                identityGsm.getMncString(),
+                                -1);
+                    } else if (info instanceof CellInfoLte) {
+                        CellSignalStrengthLte lte = ((CellInfoLte) info).getCellSignalStrength();
+                        CellIdentityLte identityLte = ((CellInfoLte) info).getCellIdentity();
+                        return new CellTowerInfo(
+                                "LTE",
+                                "" + identityLte.getCi(),
+                                "" + lte.getDbm(),
+                                "" + identityLte.getTac(),
+                                identityLte.getMccString(),
+                                identityLte.getMncString(),
+                                identityLte.getPci());
+                    } else if (info instanceof CellInfoNr) {
+                        CellSignalStrengthNr lte = (CellSignalStrengthNr) info.getCellSignalStrength();
+                        CellIdentityNr identityLte = (CellIdentityNr) info.getCellIdentity();
+                        return new CellTowerInfo(
+                                "Nr : " + identityLte.getMccString() + ", " + identityLte.getMncString(),
+                                "" + identityLte.getNci(),
+                                "" + lte.getDbm(),
+                                "" + identityLte.getTac(),
+                                identityLte.getMccString(),
+                                identityLte.getMncString(),
+                                identityLte.getPci());
+                    }
                 }
             }
         }
+
         return null;
-    }
-
-    private static final int INTERNET_CHECKING_INTERVAL = 20 * 1000;
-    private static final int MAX_INTERNET_CHECKING_INTERVAL = 2 * 60 * 1000;
-    private static final int INTERVAL_DOUBLE_AT = 2 * 60 * 1000;
-    private static ConnectivityManager _connectivityManager;
-    private static ConnectivityManager.NetworkCallback _networkCallback;
-    private static Handler _handler;
-    private static final MutableLiveData<Boolean> _connectionStatus = new MutableLiveData<>(false);
-
-    public static LiveData<Boolean> getLiveConnectionStatus() {
-        return _connectionStatus;
-    }
-
-    public static void startConnectionStatusUpdates(Context ctx, String url) {
-        try {
-            NetworkRequest networkRequest = new NetworkRequest.Builder()
-                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                    .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-                    .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
-                    .build();
-
-            _networkCallback = new ConnectivityManager.NetworkCallback() {
-
-                @Override
-                public void onAvailable(@NonNull Network network) {
-                    super.onAvailable(network);
-                    Log.i(TAG, "onAvailable: ");
-                    if (_handler == null) {
-                        _handler = new Handler();
-                    }
-
-                    long elapsedTime = System.currentTimeMillis();
-                    final int[] currentInterval = {INTERNET_CHECKING_INTERVAL};
-                    Runnable runnable = new Runnable() {
-                        @Override
-                        public void run() {
-                            if (currentInterval[0] <= MAX_INTERNET_CHECKING_INTERVAL) {
-                                if (System.currentTimeMillis() - elapsedTime >= INTERVAL_DOUBLE_AT) {
-                                    currentInterval[0] *= 2;
-                                }
-                            }
-                            Boolean isReachable = isReachable(ctx, url);
-                            Log.i(TAG, (isReachable ? "" : "not") + " connected to the internet.");
-                            _connectionStatus.postValue(isReachable);
-                            _handler.postDelayed(this, currentInterval[0]);
-                        }
-                    };
-
-                    _handler.post(runnable);
-                }
-
-                @Override
-                public void onLost(@NonNull Network network) {
-                    super.onLost(network);
-                    Log.i(TAG, "onLost: ");
-                    _connectionStatus.postValue(false);
-                    if (_handler != null) {
-                        _handler.removeCallbacksAndMessages(null);
-                    }
-                }
-            };
-
-            _connectivityManager = ctx.getSystemService(ConnectivityManager.class);
-            _connectivityManager.requestNetwork(networkRequest, _networkCallback);
-        } catch (Exception e) {
-            Log.e(TAG, "startConnectionStatusUpdates: ", e);
-        }
-    }
-
-    public static void stopConnectionStatusUpdates() {
-        if (_connectivityManager != null && _networkCallback != null) {
-            _connectivityManager.unregisterNetworkCallback(_networkCallback);
-            if (_handler != null) {
-                _handler.removeCallbacksAndMessages(null);
-            }
-        }
     }
 
     public static CompletableFuture<Boolean> isReachableAsync(String url, int timeout) {
@@ -224,31 +162,25 @@ public class NetworkUtil {
         return responseCode >= 200 && responseCode < 300;
     }
 
-    public static boolean isReachable(Context context, String url) {
-        return isReachable(context, url, 5 * 1000);
-    }
-
-    public static boolean isReachable(Context context, String url, int timeout) {
-        try {
-            if (!isConnected(context)) {
-                return false;
-            }
-
-            URL connectionUrl = new URL(url);
-            HttpURLConnection connection = (HttpURLConnection) connectionUrl.openConnection();
-            connection.setConnectTimeout(timeout);
-            connection.connect();
-            return connection.getResponseCode() == 200;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
     public static class CellTowerInfo {
         public String type;
         public String towerId;
         public String signalStrength;
         public String lac;
+
+        public String mnc;
+        public String mcc;
+        public int pci;
+
+        public CellTowerInfo(String type, String towerId, String signalStrength, String lac, String mcc, String mnc, int pci) {
+            this.type = type;
+            this.towerId = towerId;
+            this.signalStrength = signalStrength;
+            this.lac = lac;
+            this.mnc = mnc;
+            this.mcc = mcc;
+            this.pci = pci;
+        }
 
         public CellTowerInfo(String type, String towerId, String signalStrength, String lac) {
             this.type = type;
@@ -256,16 +188,29 @@ public class NetworkUtil {
             this.signalStrength = signalStrength;
             this.lac = lac;
         }
+
+        @Override
+        public String toString() {
+            return "CellTowerInfo{" +
+                    "type='" + type + '\'' +
+                    ", towerId='" + towerId + '\'' +
+                    ", signalStrength='" + signalStrength + '\'' +
+                    ", lac='" + lac + '\'' +
+                    ", mnc='" + mnc + '\'' +
+                    ", mcc='" + mcc + '\'' +
+                    ", pci=" + pci +
+                    '}';
+        }
     }
 
-    private static WifiInfo getWifiInfo(Context context) {
+    public static WifiInfo getWifiInfo(Context context) {
         return ((WifiManager) context.getApplicationContext()
                 .getSystemService(Context.WIFI_SERVICE))
                 .getConnectionInfo();
     }
 
     public static boolean isWifiConnected(Context context) {
-        ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        ConnectivityManager connectivityManager = (ConnectivityManager) context.getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
         if (connectivityManager != null) {
             NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
             return networkInfo != null && networkInfo.isConnected() && networkInfo.getType() == ConnectivityManager.TYPE_WIFI;

@@ -75,7 +75,7 @@ public class PermissionUtil {
         return hasPermission(context, READ_EXTERNAL_STORAGE) && hasPermission(context, WRITE_EXTERNAL_STORAGE);
     }
 
-    public static boolean isExternalStorageManager() {
+    public static boolean hasExternalStorageManagerPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             return Environment.isExternalStorageManager();
         }
@@ -88,7 +88,7 @@ public class PermissionUtil {
             return;
         }
 
-        if (isExternalStorageManager()) {
+        if (hasExternalStorageManagerPermission()) {
             return;
         }
 
@@ -125,7 +125,7 @@ public class PermissionUtil {
     }
 
     public static boolean hasAccessibilityPermission(Context context, Class<? extends AccessibilityService> service) {
-        AccessibilityManager am = (AccessibilityManager) context.getSystemService(Context.ACCESSIBILITY_SERVICE);
+        AccessibilityManager am = (AccessibilityManager) context.getApplicationContext().getSystemService(Context.ACCESSIBILITY_SERVICE);
         List<AccessibilityServiceInfo> enabledServices = am.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK);
 
         for (AccessibilityServiceInfo enabledService : enabledServices) {
@@ -152,7 +152,7 @@ public class PermissionUtil {
     }
 
     public static boolean hasUsageStatsPermission(Context context) {
-        AppOpsManager appOps = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
+        AppOpsManager appOps = (AppOpsManager) context.getApplicationContext().getSystemService(Context.APP_OPS_SERVICE);
         int mode = appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), context.getPackageName());
         if (mode == AppOpsManager.MODE_DEFAULT) {
             return (context.checkCallingOrSelfPermission(Manifest.permission.PACKAGE_USAGE_STATS) == PackageManager.PERMISSION_GRANTED);

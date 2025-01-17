@@ -117,7 +117,7 @@ public class DeviceUtil {
 
     public static List<UsageStats> getUsageStats(Context ctx, long interval) {
         long currentTime = System.currentTimeMillis();
-        UsageStatsManager usm = (UsageStatsManager) ctx.getSystemService(Context.USAGE_STATS_SERVICE);
+        UsageStatsManager usm = (UsageStatsManager) ctx.getApplicationContext().getSystemService(Context.USAGE_STATS_SERVICE);
         List<UsageStats> usageStatsList = usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, currentTime - interval, currentTime);
         if (usageStatsList == null || usageStatsList.isEmpty()) {
             return new ArrayList<>();

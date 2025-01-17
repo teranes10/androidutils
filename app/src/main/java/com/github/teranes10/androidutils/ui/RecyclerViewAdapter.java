@@ -1,4 +1,4 @@
-package com.github.teranes10.androidutils.helpers.ui;
+package com.github.teranes10.androidutils.ui;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -166,7 +166,7 @@ public class RecyclerViewAdapter<T> extends RecyclerView.Adapter<RecyclerViewAda
             super(binding.getRoot());
             _binding = binding;
 
-            itemView.setOnClickListener(v -> {
+            ClickListener.setOnClickListener(itemView, v -> {
                 int position = getAdapterPosition();
                 if (_onClick != null && position != RecyclerView.NO_POSITION) {
                     if (_items != null && position < _items.size()) {

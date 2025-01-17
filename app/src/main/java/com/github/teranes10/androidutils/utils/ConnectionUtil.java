@@ -38,7 +38,7 @@ public class ConnectionUtil {
     public ConnectionUtil(Context context, String url, ConnectionListener listener) {
         this.url = url;
         this.listener = listener;
-        this.connectivityManager = context.getSystemService(ConnectivityManager.class);
+        this.connectivityManager = context.getApplicationContext().getSystemService(ConnectivityManager.class);
         initializeNetworkCallback();
     }
 
@@ -70,8 +70,6 @@ public class ConnectionUtil {
     private void startInternetCheck() {
         if (handlerThread == null) {
             handlerThread = new HandlerThread(TAG);
-        }
-        if (!handlerThread.isAlive()) {
             handlerThread.start();
         }
         if (handler == null) {
@@ -93,19 +91,38 @@ public class ConnectionUtil {
     }
 
     private class InternetCheckRunnable implements Runnable {
+        private long delayFactor = 1;
+
         @Override
         public void run() {
-            NetworkUtil.isReachableAsync(url, CONNECTION_TIMEOUT)
-                    .thenAcceptAsync(isReachable -> {
-                        Log.i(TAG, "checking internet reachability: " + isReachable);
-                        updateInternetAvailability(isReachable);
-                        if (handler != null) {
-                            handler.postDelayed(this, INTERNET_CHECKING_INTERVAL);
-                        }
-                    }).exceptionally(e -> {
-                        Log.e(TAG, "checking internet reachability: ", e);
-                        return null;
-                    });
+            boolean isReachable = false;
+            try {
+                isReachable = NetworkUtil.isReachableAsync(url, CONNECTION_TIMEOUT).join();
+                Log.i(TAG, "checking internet reachability: " + isReachable);
+                updateInternetAvailability(isReachable);
+            } catch (Exception e) {
+                Log.e(TAG, "checking internet reachability: ", e);
+            }
+
+            if (handler != null) {
+                if (!isReachable) {
+                    // Limit delayFactor to a maximum of 4
+                    if (++delayFactor > 4) {
+                        delayFactor = 4;
+                    }
+
+                    // Calculate the next delay based on the delayFactor
+                    long nextDelay = INTERNET_CHECKING_INTERVAL * delayFactor / 4;
+                    Log.i(TAG, "Retrying in " + nextDelay + " ms");
+
+                    // Post the retry task with the next delay
+                    handler.postDelayed(this, nextDelay);
+                } else {
+                    // Reset delayFactor if internet is available
+                    delayFactor = 1;
+                    handler.postDelayed(this, INTERNET_CHECKING_INTERVAL);
+                }
+            }
         }
     }
 

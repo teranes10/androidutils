@@ -1,4 +1,4 @@
-package com.github.teranes10.androidutils.utils.database;
+package com.github.teranes10.androidutils.models;
 
 import java.util.List;
 

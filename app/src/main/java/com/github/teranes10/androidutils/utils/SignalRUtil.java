@@ -6,10 +6,6 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
 
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.Observer;
-
 import com.microsoft.signalr.HttpHubConnectionBuilder;
 import com.microsoft.signalr.HubConnection;
 import com.microsoft.signalr.HubConnectionBuilder;
@@ -20,35 +16,42 @@ import java.util.concurrent.CompletableFuture;
 import io.reactivex.rxjava3.core.Single;
 
 public abstract class SignalRUtil {
+    private static final String TAG = "SignalR";
     private static final int SERVER_TIMEOUT = 30 * 1000;
     private static final int KEEP_ALIVE_INTERVAL = 20 * 1000;
     private static final int[] CONNECTION_RETRIES = new int[]{0, 10000, 20000, 30000, 60000};
     private static final int RESET_CONNECTION_RETRY_IN = 5 * 60 * 1000;
-    private final Context _ctx;
-    private static final MutableLiveData<ConnectionStatus> _connection_status = new MutableLiveData<>();
-    private static HubConnection _hubConnection;
-    private static long _lastReconnectedAt = 0;
-    private static int _currentConnectionTry = 0;
-    private static boolean _isConnecting;
-    private static CompletableFuture<HubConnection> _connectionFuture;
 
-    private final Observer<Boolean> _internetConnectionObserver = (status) -> {
-        if (status) {
-            _connection_status.postValue(ConnectionStatus.NotConnected);
+    private final Context _ctx;
+    private final SignalRStatusListener _listener;
+    private HubConnection _hubConnection;
+    private long _lastReconnectedAt = 0;
+    private int _currentConnectionTry = 0;
+    private boolean _isConnecting;
+    private CompletableFuture<HubConnection> _connectionFuture;
+
+    private final ConnectionUtil.ConnectionListener _internetConnectionListener = (isConnected) -> {
+        if (isConnected) {
+            updateStatus(ConnectionStatus.NotConnected);
             if (!_isConnecting) {
                 connect();
             }
         }
     };
 
-    private static final String TAG = "SignalR";
-
-    public SignalRUtil(Context context) {
-        this._ctx = context;
+    public interface SignalRStatusListener {
+        void onConnectionStatusChanged(ConnectionStatus status);
     }
 
-    public LiveData<ConnectionStatus> getLiveStatus() {
-        return _connection_status;
+    public SignalRUtil(Context context, SignalRStatusListener listener) {
+        this._ctx = context;
+        this._listener = listener;
+    }
+
+    private void updateStatus(ConnectionStatus status) {
+        if (_listener != null) {
+            _listener.onConnectionStatusChanged(status);
+        }
     }
 
     private HubConnection connection() {
@@ -70,7 +73,7 @@ public abstract class SignalRUtil {
         hubConnection.onClosed(e -> {
             Log.e(TAG, "onClosed: " + setTag() + ": " + e.getLocalizedMessage());
             onConnectionClosed();
-            _connection_status.postValue(ConnectionStatus.Reconnecting);
+            updateStatus(ConnectionStatus.Reconnecting);
             reconnect();
         });
 
@@ -93,7 +96,7 @@ public abstract class SignalRUtil {
                 _currentConnectionTry++;
             } else {
                 onConnectionClosed();
-                _connection_status.postValue(ConnectionStatus.Disconnected);
+                updateStatus(ConnectionStatus.Disconnected);
             }
         } catch (Exception e) {
             Log.e(TAG, "reconnect: " + e.getLocalizedMessage());
@@ -101,26 +104,28 @@ public abstract class SignalRUtil {
     }
 
     private void startObserveInternetConnection() {
-        new Handler(Looper.getMainLooper()).post(() -> {
-            NetworkUtil.getLiveConnectionStatus().observeForever(_internetConnectionObserver);
-            NetworkUtil.startConnectionStatusUpdates(_ctx, setKeepAliveUrl());
-        });
+        DefaultConnectionUtil instance = DefaultConnectionUtil.getInstance(_ctx);
+        if (instance != null) {
+            instance.addListener(_internetConnectionListener);
+        }
     }
 
     private void stopObserveInternetConnection() {
-        new Handler(Looper.getMainLooper()).post(() -> {
-            NetworkUtil.getLiveConnectionStatus().removeObserver(_internetConnectionObserver);
-            NetworkUtil.stopConnectionStatusUpdates();
-        });
+        DefaultConnectionUtil instance = DefaultConnectionUtil.getInstance(_ctx);
+        if (instance != null) {
+            instance.removeListener(_internetConnectionListener);
+        }
     }
 
-    protected abstract String setTag();
+    private String setTag() {
+        return getClass().getSimpleName();
+    }
+
+    private String setToken() {
+        return null;
+    }
 
     protected abstract String setUrl();
-
-    protected abstract String setKeepAliveUrl();
-
-    protected abstract String setToken();
 
     protected abstract void onConnected();
 
@@ -131,7 +136,7 @@ public abstract class SignalRUtil {
     public CompletableFuture<HubConnection> connect() {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                _connection_status.postValue(ConnectionStatus.Connecting);
+                updateStatus(ConnectionStatus.Connecting);
 
                 if (_hubConnection == null) {
                     _hubConnection = connection();
@@ -150,7 +155,7 @@ public abstract class SignalRUtil {
                     }
 
                     onConnected();
-                    _connection_status.postValue(ConnectionStatus.Connected);
+                    updateStatus(ConnectionStatus.Connected);
                     Log.i(TAG, "connection: Connected.");
                     stopObserveInternetConnection();
                 }
@@ -158,7 +163,7 @@ public abstract class SignalRUtil {
             } catch (Exception e) {
                 Log.e(TAG, "connection: " + setTag() + ": " + e.getLocalizedMessage());
                 onConnectionClosed();
-                _connection_status.postValue(ConnectionStatus.Disconnected);
+                updateStatus(ConnectionStatus.Disconnected);
                 _isConnecting = false;
                 _connectionFuture = null;
                 startObserveInternetConnection();

@@ -1,4 +1,4 @@
-package com.github.teranes10.androidutils.helpers.ui;
+package com.github.teranes10.androidutils.ui;
 
 import static android.content.Context.LAYOUT_INFLATER_SERVICE;
 import static android.content.Context.WINDOW_SERVICE;
@@ -37,8 +37,8 @@ public class FloatingAlert {
 
     public FloatingAlert(Context context, int layout) {
         _ctx = context;
-        windowManager = (WindowManager) context.getSystemService(WINDOW_SERVICE);
-        LayoutInflater inflater = (LayoutInflater) context.getSystemService(LAYOUT_INFLATER_SERVICE);
+        windowManager = (WindowManager) context.getApplicationContext().getSystemService(WINDOW_SERVICE);
+        LayoutInflater inflater = (LayoutInflater) context.getApplicationContext().getSystemService(LAYOUT_INFLATER_SERVICE);
         floatView = inflater.inflate(layout, null);
     }
 
@@ -57,8 +57,8 @@ public class FloatingAlert {
     }
 
     public FloatingAlert bind() {
-        windowManager = (WindowManager) _ctx.getSystemService(WINDOW_SERVICE);
-        LayoutInflater inflater = (LayoutInflater) _ctx.getSystemService(LAYOUT_INFLATER_SERVICE);
+        windowManager = (WindowManager) _ctx.getApplicationContext().getSystemService(WINDOW_SERVICE);
+        LayoutInflater inflater = (LayoutInflater) _ctx.getApplicationContext().getSystemService(LAYOUT_INFLATER_SERVICE);
         floatView = _onViewBinding.onViewCreate(inflater, this);
         return this;
     }
@@ -168,21 +168,26 @@ public class FloatingAlert {
         windowManager.updateViewLayout(floatView, floatWindowLayoutUpdateParam);
     }
 
+    public View getView() {
+        return floatView;
+    }
+
     public FloatingAlert setAlpha(float alpha) {
         floatView.setAlpha(alpha);
         return this;
     }
 
-    public void show() {
+    public boolean show() {
         if (!PermissionUtil.hasOverlayPermission(_ctx)) {
-            return;
+            return false;
         }
 
         if (isShowing()) {
-            return;
+            return false;
         }
 
         windowManager.addView(floatView, floatWindowLayoutParam);
+        return true;
     }
 
     public boolean isShowing() {

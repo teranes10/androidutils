@@ -2,16 +2,18 @@ package com.github.teranes10.androidutils.utils;
 
 import android.content.Context;
 
+import java.lang.ref.WeakReference;
+
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
 
 public class DefaultConnectionUtil extends EventUtil<ConnectionUtil.ConnectionListener> {
-    private final ConnectionUtil _connectionUtil;
-
-    private static DefaultConnectionUtil instance;
+    private static volatile WeakReference<DefaultConnectionUtil> instanceWeakRef;
     private static String _url = "https://www.google.com/generate_204";
     private static int _interval = 30 * 1000;
+
+    private final ConnectionUtil _connectionUtil;
 
     private DefaultConnectionUtil(Context ctx, String url, int interval) {
         _connectionUtil = new ConnectionUtil(ctx, url,
@@ -21,41 +23,48 @@ public class DefaultConnectionUtil extends EventUtil<ConnectionUtil.ConnectionLi
         _connectionUtil.setInternetCheckingInterval(interval);
     }
 
-    private static synchronized DefaultConnectionUtil getInstance(Context ctx) {
+    @Override
+    public boolean addListener(ConnectionUtil.ConnectionListener listener) {
+        return super.addListener(listener);
+    }
+
+    @Override
+    public synchronized boolean removeListener(ConnectionUtil.ConnectionListener listener) {
+        if (super.removeListener(listener)) {
+            if (getListenerCount() == 0) {
+                _connectionUtil.release();
+
+                if (instanceWeakRef != null) {
+                    instanceWeakRef.clear();
+                    instanceWeakRef = null;
+                }
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    public static synchronized DefaultConnectionUtil getInstance(Context ctx) {
+        DefaultConnectionUtil instance = instanceWeakRef != null ? instanceWeakRef.get() : null;
         if (instance == null) {
             instance = new DefaultConnectionUtil(ctx, _url, _interval);
+            instanceWeakRef = new WeakReference<>(instance);
         }
 
         return instance;
     }
 
-    public static void setUrl(String _url) {
-        DefaultConnectionUtil._url = _url;
+    protected static void setup(String url, int interval) {
+        _url = url;
+        _interval = interval;
     }
 
-    public static void setInterval(int _interval) {
-        DefaultConnectionUtil._interval = _interval;
-    }
-
-    public static void updateInternetAvailability(boolean isConnected) {
+    private static synchronized void updateInternetAvailability(boolean isConnected) {
+        DefaultConnectionUtil instance = instanceWeakRef != null ? instanceWeakRef.get() : null;
         if (instance != null) {
             instance._connectionUtil.updateInternetAvailability(isConnected);
-        }
-    }
-
-    public static void setListener(Context context, ConnectionUtil.ConnectionListener listener) {
-        DefaultConnectionUtil instance = getInstance(context);
-        instance.addListener(listener);
-    }
-
-    public static void removeListener(Context context, ConnectionUtil.ConnectionListener listener) {
-        if (instance == null) {
-            return;
-        }
-
-        if (instance.removeListener(listener) && instance.getListenerCount() == 0) {
-            instance._connectionUtil.release();
-            instance = null;
         }
     }
 

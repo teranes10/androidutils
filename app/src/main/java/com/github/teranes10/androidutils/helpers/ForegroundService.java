@@ -131,7 +131,7 @@ public abstract class ForegroundService extends Service {
     private static void createNotificationChannel(Context context) {
         android.app.NotificationChannel channel = new android.app.NotificationChannel(
                 CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT);
-        NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
+        NotificationManager notificationManager = context.getApplicationContext().getSystemService(NotificationManager.class);
         notificationManager.createNotificationChannel(channel);
     }
 

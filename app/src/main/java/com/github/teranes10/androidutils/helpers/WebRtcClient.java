@@ -237,7 +237,7 @@ public class WebRtcClient {
         ForegroundService.startService(_ctx, ScreenCastService.class);
 
         MediaProjectionManager mediaProjectionManager =
-                (MediaProjectionManager) _ctx.getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+                (MediaProjectionManager) _ctx.getApplicationContext().getSystemService(Context.MEDIA_PROJECTION_SERVICE);
 
         if (mediaProjectionManager != null) {
             _screenCaptureLauncher.launch(mediaProjectionManager.createScreenCaptureIntent());
@@ -268,7 +268,7 @@ public class WebRtcClient {
 
     private void onCapturingPermissionGranted(Intent permissionIntent) {
         DisplayMetrics displayMetrics = new DisplayMetrics();
-        WindowManager windowManager = (WindowManager) _ctx.getSystemService(Context.WINDOW_SERVICE);
+        WindowManager windowManager = (WindowManager) _ctx.getApplicationContext().getSystemService(Context.WINDOW_SERVICE);
         windowManager.getDefaultDisplay().getMetrics(displayMetrics);
         int screenWidth = displayMetrics.widthPixels;
         int screenHeight = displayMetrics.heightPixels;
