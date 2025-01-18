@@ -54,8 +54,17 @@ public class AppUtil {
         return false;
     }
 
+    public static Boolean isVersionUpToDate(Context context, String serverVersion, boolean force) {
+        String deviceVersion = getAppVersion(context);
+        if (force) {
+            return serverVersion.equals(deviceVersion);
+        }
+
+        return isVersionUpToDate(deviceVersion, serverVersion);
+    }
+
     public static Boolean isVersionUpToDate(Context context, String serverVersion) {
-        return isVersionUpToDate(getAppVersion(context), serverVersion);
+        return isVersionUpToDate(context, serverVersion, false);
     }
 
     public static boolean isAppRunning(Context context, String packageName) {

@@ -65,6 +65,9 @@ dependencies {
     implementation("com.google.android.gms:play-services-location:21.0.1")
     implementation("com.google.android.gms:play-services-places:17.0.0")
     implementation("com.google.maps.android:android-maps-utils:3.4.0")
+
+    //firebase
+    implementation("com.google.firebase:firebase-firestore:24.10.0")
 }
 
 afterEvaluate {

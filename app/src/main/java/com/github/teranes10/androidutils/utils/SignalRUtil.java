@@ -40,7 +40,7 @@ public abstract class SignalRUtil {
     };
 
     public interface SignalRStatusListener {
-        void onConnectionStatusChanged(ConnectionStatus status);
+        void onSignalRConnectionStatusChanged(ConnectionStatus status);
     }
 
     public SignalRUtil(Context context, SignalRStatusListener listener) {
@@ -50,7 +50,7 @@ public abstract class SignalRUtil {
 
     private void updateStatus(ConnectionStatus status) {
         if (_listener != null) {
-            _listener.onConnectionStatusChanged(status);
+            _listener.onSignalRConnectionStatusChanged(status);
         }
     }
 

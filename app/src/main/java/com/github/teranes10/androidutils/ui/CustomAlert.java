@@ -23,6 +23,10 @@ public class CustomAlert extends CustomAlertBase<CustomAlert> {
         this(context, null, null);
     }
 
+    public CustomAlert(Context context, Integer themeId) {
+        this(context, themeId, null);
+    }
+
     public CustomAlert(Context context, Integer themeId, CustomAlertEvent listener) {
         _ctx = context;
         _dialog = themeId != null ? new Dialog(context, themeId) : new Dialog(context);

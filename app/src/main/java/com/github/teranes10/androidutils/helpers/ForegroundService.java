@@ -2,6 +2,7 @@ package com.github.teranes10.androidutils.helpers;
 
 import android.app.Notification;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -33,7 +34,7 @@ public abstract class ForegroundService extends Service {
 
     protected abstract void onStartService(Context context);
 
-    protected abstract void onStopService();
+    protected abstract void onStopService(Context context);
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -72,11 +73,12 @@ public abstract class ForegroundService extends Service {
             return;
         }
 
+        onStopService(_ctx);
+        stopForegroundService();
+
         _ctx = null;
         _serviceRunning = false;
         _serviceStartedAt = null;
-        onStopService();
-        stopForegroundService();
     }
 
     public Long getServiceElapsedTime() {
@@ -135,12 +137,18 @@ public abstract class ForegroundService extends Service {
         notificationManager.createNotificationChannel(channel);
     }
 
-    private static Notification createNotification(Context ctx) {
+    public NotificationCompat.Builder onBuildNotification(NotificationCompat.Builder builder) {
+        return builder;
+    }
+
+    private Notification createNotification(Context ctx) {
         createNotificationChannel(ctx);
-        return new NotificationCompat.Builder(ctx, CHANNEL_ID)
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx, CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentText("Service is running...")
-                .build();
+                .setContentText("Service is running...");
+
+        return onBuildNotification(builder).build();
     }
 
     public static class ServiceBinder extends Binder {
