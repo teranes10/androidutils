@@ -6,6 +6,8 @@ import static android.content.Context.WINDOW_SERVICE;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.PixelFormat;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.GestureDetector;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -188,6 +190,13 @@ public class FloatingAlert {
 
         windowManager.addView(floatView, floatWindowLayoutParam);
         return true;
+    }
+
+    public void show(int timer) {
+        if (show()) {
+            new Handler(Looper.getMainLooper())
+                    .postDelayed(this::close, timer);
+        }
     }
 
     public boolean isShowing() {

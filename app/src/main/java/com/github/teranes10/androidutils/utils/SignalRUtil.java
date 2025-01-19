@@ -142,8 +142,7 @@ public abstract class SignalRUtil {
                     _hubConnection = connection();
                 }
 
-                if (!_isConnecting && (_hubConnection != null && !isConnected())) {
-
+                if (canConnect()) {
                     _isConnecting = true;
                     _connectionFuture = _connect();
                     _connectionFuture.get();
@@ -200,6 +199,10 @@ public abstract class SignalRUtil {
     public boolean isConnected() {
         return _hubConnection != null &&
                 _hubConnection.getConnectionState() == HubConnectionState.CONNECTED;
+    }
+
+    public boolean canConnect() {
+        return !isConnecting() && !isConnected();
     }
 
     public CompletableFuture<HubConnection> getConnection(String Tag) {
