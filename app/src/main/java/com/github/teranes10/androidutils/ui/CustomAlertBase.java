@@ -145,14 +145,16 @@ public abstract class CustomAlertBase<T extends CustomAlertBase<T>> {
 
     public T setTextFieldHint(String hintString) {
         _text_field.setHint(hintString);
-        setTextField("");
         return (T) this;
     }
 
     public T setTextFieldType(int type) {
         _text_field.setInputType(type);
-        setTextField("");
         return (T) this;
+    }
+
+    public T setTextField() {
+        return setTextField("");
     }
 
     public T setTextField(String val) {
@@ -173,7 +175,7 @@ public abstract class CustomAlertBase<T extends CustomAlertBase<T>> {
     }
 
     public String getTextFieldValue() {
-        return Utils.optional(() -> Objects.requireNonNull(_text_field.getText()).toString().trim(), "");
+        return Objects.requireNonNull(_text_field.getText()).toString().trim();
     }
 
     public void bindView(Context ctx, View view) {
