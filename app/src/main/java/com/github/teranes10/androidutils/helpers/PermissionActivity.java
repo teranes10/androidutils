@@ -22,6 +22,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.github.teranes10.androidutils.ui.ClickListener;
 import com.github.teranes10.androidutils.utils.AppUtil;
+import com.github.teranes10.androidutils.utils.MyApplication;
 import com.github.teranes10.androidutils.utils.PermissionUtil;
 
 import java.util.ArrayList;
@@ -89,7 +90,7 @@ public abstract class PermissionActivity extends AppCompatActivity {
 
                         dialog.cancel();
 
-                        if (AppUtil.isFirstBoot(this)) {
+                        if (MyApplication.isFirstBoot()) {
                             String[] permissions = permissionsNotGranted.stream()
                                     .map(x -> x.permissions)
                                     .filter(Objects::nonNull)
@@ -102,12 +103,12 @@ public abstract class PermissionActivity extends AppCompatActivity {
                                 if (detail.getPermission != null) {
                                     detail.getPermission.accept(this);
                                 } else if (detail.permissions != null) {
-                                    PermissionUtil.showPermissionRationaleDialog(this,
-                                            detail.title,
-                                            detail.desc,
-                                            detail.permissions,
-                                            detail.requestCode
-                                    );
+//                                    PermissionUtil.showPermissionRationaleDialog(this,
+//                                            detail.title,
+//                                            detail.desc,
+//                                            detail.permissions,
+//                                            detail.requestCode
+//                                    );
                                 }
                             }
                         }
@@ -132,17 +133,13 @@ public abstract class PermissionActivity extends AppCompatActivity {
 
     public static class PermissionDetail {
         private final String name;
-        private String title;
-        private String desc;
         private String[] permissions;
         private int requestCode;
         private Function<Activity, Boolean> hasPermission;
         private Consumer<Activity> getPermission;
 
-        public PermissionDetail(String name, String title, String desc, String[] permissions, int requestCode) {
+        public PermissionDetail(String name, String[] permissions, int requestCode) {
             this.name = name;
-            this.title = title;
-            this.desc = desc;
             this.permissions = permissions;
             this.requestCode = requestCode;
         }
@@ -156,8 +153,6 @@ public abstract class PermissionActivity extends AppCompatActivity {
         public static PermissionDetail getStorage() {
             return new PermissionDetail(
                     "Storage",
-                    "Storage Permission Required",
-                    "This app needs storage permissions to function properly. Please allow access.",
                     new String[]{READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE},
                     10001
             );
@@ -166,8 +161,6 @@ public abstract class PermissionActivity extends AppCompatActivity {
         public static PermissionDetail getMic() {
             return new PermissionDetail(
                     "Record Audio",
-                    "Audio Permission Required",
-                    "This app needs audio permissions to stream and listen to audio. Please allow access.",
                     new String[]{RECORD_AUDIO, MODIFY_AUDIO_SETTINGS},
                     10002
             );
@@ -176,34 +169,14 @@ public abstract class PermissionActivity extends AppCompatActivity {
         public static PermissionDetail getLocation() {
             return new PermissionDetail(
                     "Location",
-                    "Location Permission Required",
-                    "This app needs location permissions to function properly. Please allow access.",
                     new String[]{ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION},
                     10003
-            );
-        }
-
-        public static PermissionDetail getBackgroundLocation() {
-            return new PermissionDetail(
-                    "Background Location",
-                    activity -> PermissionUtil.hasPermission(activity, ACCESS_BACKGROUND_LOCATION),
-                    activity -> {
-                        if (PermissionUtil.hasPermission(activity, new String[]{ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION})) {
-                            PermissionUtil.showPermissionRationaleDialog(
-                                    activity, "Background Location Permission Required.",
-                                    "This app needs background location permissions to function properly. Please allow access.",
-                                    new String[]{ACCESS_BACKGROUND_LOCATION},
-                                    10004);
-                        }
-                    }
             );
         }
 
         public static PermissionDetail getPhone() {
             return new PermissionDetail(
                     "Phone",
-                    "Phone Permission Required.",
-                    "This app needs phone permissions to function properly. Please allow access.",
                     new String[]{CALL_PHONE, SEND_SMS},
                     10005
             );
@@ -230,6 +203,22 @@ public abstract class PermissionActivity extends AppCompatActivity {
                     "Usage Stats",
                     PermissionUtil::hasUsageStatsPermission,
                     PermissionUtil::getUsageStatsPermission
+            );
+        }
+
+        public static PermissionDetail getBackgroundLocation() {
+            return new PermissionDetail(
+                    "Background Location",
+                    activity -> PermissionUtil.hasPermission(activity, ACCESS_BACKGROUND_LOCATION),
+                    activity -> {
+                        if (PermissionUtil.hasPermission(activity, new String[]{ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION})) {
+                            PermissionUtil.showPermissionRationaleDialog(
+                                    activity, "Background Location Permission Required.",
+                                    "This app needs background location permissions to function properly. Please allow access.",
+                                    new String[]{ACCESS_BACKGROUND_LOCATION},
+                                    10004);
+                        }
+                    }
             );
         }
     }

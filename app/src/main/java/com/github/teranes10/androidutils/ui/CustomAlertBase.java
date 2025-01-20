@@ -9,6 +9,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.github.teranes10.androidutils.R;
@@ -21,6 +22,8 @@ public abstract class CustomAlertBase<T extends CustomAlertBase<T>> {
     private Context _ctx;
     private ImageView _imageView;
     private TextView _textView;
+    private LinearLayout _text_layout;
+    private TextView _text_field_hint;
     private EditText _text_field;
     private Button _negativeBtn, _positiveBtn;
     private AlertClickListener<T> _positiveClickListener;
@@ -116,7 +119,6 @@ public abstract class CustomAlertBase<T extends CustomAlertBase<T>> {
                 break;
         }
 
-        _imageView.setVisibility(View.VISIBLE);
         return (T) this;
     }
 
@@ -144,6 +146,8 @@ public abstract class CustomAlertBase<T extends CustomAlertBase<T>> {
     }
 
     public T setTextFieldHint(String hintString) {
+        _text_field_hint.setVisibility(View.VISIBLE);
+        _text_field_hint.setText(hintString);
         _text_field.setHint(hintString);
         return (T) this;
     }
@@ -159,7 +163,7 @@ public abstract class CustomAlertBase<T extends CustomAlertBase<T>> {
 
     public T setTextField(String val) {
         _imageView.setVisibility(View.GONE);
-        _text_field.setVisibility(View.VISIBLE);
+        _text_layout.setVisibility(View.VISIBLE);
         _text_field.setText(val);
         _hasTextField = true;
 
@@ -182,6 +186,8 @@ public abstract class CustomAlertBase<T extends CustomAlertBase<T>> {
         _ctx = ctx;
         _imageView = view.findViewById(R.id.alert_image);
         _textView = view.findViewById(R.id.alert_message);
+        _text_layout = view.findViewById(R.id.alert_text_layout);
+        _text_field_hint = view.findViewById(R.id.alert_text_hint);
         _text_field = view.findViewById(R.id.alert_text_field);
         _negativeBtn = view.findViewById(R.id.alert_negative_btn);
         _positiveBtn = view.findViewById(R.id.alert_positive_btn);

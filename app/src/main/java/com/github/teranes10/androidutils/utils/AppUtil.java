@@ -103,15 +103,4 @@ public class AppUtil {
             Log.e(TAG, "installAPK: ", e);
         }
     }
-
-    public static void storeFirstBoot(Context context) {
-        SharedPreferences.Editor editor = context.getSharedPreferences("FIRST_BOOT", Context.MODE_PRIVATE).edit();
-        editor.putBoolean("isFirstBoot", true);
-        editor.apply();
-    }
-
-    public static boolean isFirstBoot(Context context) {
-        SharedPreferences preferences = context.getSharedPreferences("FIRST_BOOT", Context.MODE_PRIVATE);
-        return preferences.getBoolean("isFirstBoot", false);
-    }
 }
