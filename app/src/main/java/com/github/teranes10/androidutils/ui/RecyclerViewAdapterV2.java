@@ -132,6 +132,10 @@ public class RecyclerViewAdapterV2<T, Tv> extends RecyclerView.Adapter<RecyclerV
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        if (_onViewBinding == null) {
+            throw new IllegalArgumentException("View binding is null");
+        }
+
         return new ViewHolder(
                 _onViewBinding.onViewCreate(
                         LayoutInflater.from(parent.getContext()), parent, viewType));
@@ -166,27 +170,34 @@ public class RecyclerViewAdapterV2<T, Tv> extends RecyclerView.Adapter<RecyclerV
             super(((ViewBinding) binding).getRoot());
             _binding = binding;
 
-            ClickListener.setOnClickListener(itemView, v -> {
-                int position = getAdapterPosition();
-                if (_onClick != null && position != RecyclerView.NO_POSITION) {
-                    if (_items != null && position < _items.size()) {
-                        _onClick.onItemClick(_binding, _items.get(position));
+            if (_onClick != null) {
+                ClickListener.setOnClickListener(itemView, v -> {
+                    int position = getAdapterPosition();
+                    if (_onClick != null && position != RecyclerView.NO_POSITION) {
+                        if (_items != null && position < _items.size()) {
+                            _onClick.onItemClick(_binding, _items.get(position));
+                        }
                     }
-                }
-            });
+                });
+            }
 
-            itemView.setOnLongClickListener(v -> {
-                int position = getAdapterPosition();
-                if (_onLongClick != null && position != RecyclerView.NO_POSITION) {
-                    if (_items != null && position < _items.size()) {
-                        _onLongClick.onItemLongClick(_binding, _items.get(position));
+            if (_onLongClick != null) {
+                ClickListener.setOnLongClickListener(itemView, v -> {
+                    int position = getAdapterPosition();
+                    if (_onLongClick != null && position != RecyclerView.NO_POSITION) {
+                        if (_items != null && position < _items.size()) {
+                            _onLongClick.onItemLongClick(_binding, _items.get(position));
+                        }
                     }
-                }
-                return false;
-            });
+                });
+            }
         }
 
         public void bind(T item) {
+            if (_onDataBinding == null) {
+                return;
+            }
+
             _onDataBinding.onDataBind(_binding, item);
         }
     }
