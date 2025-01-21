@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -135,6 +136,11 @@ public class Utils {
         return t -> seen.add(keyExtractor.apply(t));
     }
 
+    public static <T> Predicate<T> distinctByCompositeKey(Function<? super T, CompositeKey> keyExtractor) {
+        Set<CompositeKey> seen = ConcurrentHashMap.newKeySet();
+        return t -> seen.add(keyExtractor.apply(t));
+    }
+
     public static String validatePhoneNumber(String phoneNUmber, String code) {
         if (phoneNUmber == null) {
             return "";
@@ -174,5 +180,26 @@ public class Utils {
                 Thread.currentThread().interrupt();
             }
         });
+    }
+
+    public static class CompositeKey {
+        private final Object keyPart1;
+        private final Object keyPart2;
+        public CompositeKey(Object keyPart1, Object keyPart2) {
+            this.keyPart1 = keyPart1;
+            this.keyPart2 = keyPart2;
+        }
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            CompositeKey that = (CompositeKey) o;
+            return Objects.equals(keyPart1, that.keyPart1) &&
+                    Objects.equals(keyPart2, that.keyPart2);
+        }
+        @Override
+        public int hashCode() {
+            return Objects.hash(keyPart1, keyPart2);
+        }
     }
 }

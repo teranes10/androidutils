@@ -121,6 +121,10 @@ public class Formatter {
 
     public static String getLocalDate(String utcFormat, String utcDate, String resultFormat) {
         try {
+            if(utcDate == null || utcDate.trim().isEmpty()) {
+                return "";
+            }
+
             SimpleDateFormat _utcFormat = getFormat(utcFormat);
             _utcFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
             Date _utcDate = _utcFormat.parse(utcDate);
@@ -157,7 +161,7 @@ public class Formatter {
             d1 = ldf.parse(sdf.format(new Date()));
         }
         // catch block for handling ParseException
-        catch (ParseException e) {
+        catch (java.text.ParseException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
             System.out.println(e.getMessage());
@@ -181,7 +185,7 @@ public class Formatter {
             d1 = ldf.parse(sdf.format(time));
         }
         // catch block for handling ParseException
-        catch (ParseException e) {
+        catch (java.text.ParseException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
             System.out.println(e.getMessage());
@@ -198,5 +202,17 @@ public class Formatter {
         } catch (Exception e) {
             return "";
         }
+    }
+
+    public static String timeFormat(long millis) {
+        if (millis <= 0) {
+            return "00:00:00";
+        }
+
+        int seconds = (int) (millis / 1000) % 60;
+        int minutes = (int) ((millis / (1000 * 60)) % 60);
+        int hours = (int) ((millis / (1000 * 60 * 60)) % 24);
+
+        return String.format("%02d:%02d:%02d", hours, minutes, seconds);
     }
 }
