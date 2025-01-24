@@ -129,11 +129,11 @@ public abstract class SignalRUtil {
         }
     }
 
-    public String setTag() {
+    protected String setTag() {
         return getClass().getSimpleName();
     }
 
-    public String setToken() {
+    protected String setToken() {
         return null;
     }
 

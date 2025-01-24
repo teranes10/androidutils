@@ -38,7 +38,7 @@ public class ResponseInterceptor {
 
     private static Response errorHandler(Request request, Exception e) {
         String message = e.getLocalizedMessage() != null ? e.getLocalizedMessage() : "";
-        if (message.contains("Unable to resolve host") || message.contains("No address associated with hostname")) {
+        if (message.contains("Unable to resolve host") || message.contains("No address associated with hostname") || message.contains("timeout")) {
             return createErrorResponse(request, "No network connection to the server. Please check and retry.", Result.ResultType.NoInternetConnection);
         }
 
