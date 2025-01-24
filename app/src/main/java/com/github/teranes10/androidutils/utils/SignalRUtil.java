@@ -14,6 +14,7 @@ import com.microsoft.signalr.HubConnectionState;
 import java.util.concurrent.CompletableFuture;
 
 import io.reactivex.rxjava3.core.Single;
+import io.reactivex.rxjava3.disposables.Disposable;
 
 public abstract class SignalRUtil {
     private static final String TAG = "SignalR";
@@ -22,18 +23,27 @@ public abstract class SignalRUtil {
     private static final int[] CONNECTION_RETRIES = new int[]{0, 10000, 20000, 30000, 60000};
     private static final int RESET_CONNECTION_RETRY_IN = 5 * 60 * 1000;
 
-    private final Context _ctx;
-    private final SignalRStatusListener _listener;
-    private HubConnection _hubConnection;
-    private long _lastReconnectedAt = 0;
-    private int _currentConnectionTry = 0;
-    private boolean _isConnecting;
-    private CompletableFuture<HubConnection> _connectionFuture;
+    private final Context context;
+    private final SignalRStatusListener listener;
+    private HubConnection hubConnection;
+    private long lastReconnectedAt = 0;
+    private int currentConnectionTry = 0;
+    private boolean isConnecting;
+    private CompletableFuture<HubConnection> connectionFuture;
+    private Disposable connectionDisposable;
 
-    private final ConnectionUtil.ConnectionListener _internetConnectionListener = (isConnected) -> {
+    public enum ConnectionStatus {
+        Disconnected,
+        Connecting,
+        Connected,
+        Reconnecting,
+        NotConnected
+    }
+
+    private final ConnectionUtil.ConnectionListener internetConnectionListener = isConnected -> {
         if (isConnected) {
             updateStatus(ConnectionStatus.NotConnected);
-            if (!_isConnecting) {
+            if (!isConnecting) {
                 connect();
             }
         }
@@ -44,17 +54,17 @@ public abstract class SignalRUtil {
     }
 
     public SignalRUtil(Context context, SignalRStatusListener listener) {
-        this._ctx = context;
-        this._listener = listener;
+        this.context = context;
+        this.listener = listener;
     }
 
     private void updateStatus(ConnectionStatus status) {
-        if (_listener != null) {
-            _listener.onSignalRConnectionStatusChanged(status);
+        if (listener != null) {
+            listener.onSignalRConnectionStatusChanged(status);
         }
     }
 
-    private HubConnection connection() {
+    private HubConnection createConnection() {
         if (Utils.isNullOrEmpty(setUrl())) {
             return null;
         }
@@ -64,36 +74,38 @@ public abstract class SignalRUtil {
             builder.withAccessTokenProvider(Single.defer(() -> Single.just(setToken())));
         }
 
-        HubConnection hubConnection = builder.build();
-        hubConnection.setServerTimeout(SERVER_TIMEOUT);
-        hubConnection.setKeepAliveInterval(KEEP_ALIVE_INTERVAL);
+        HubConnection connection = builder.build();
+        connection.setServerTimeout(SERVER_TIMEOUT);
+        connection.setKeepAliveInterval(KEEP_ALIVE_INTERVAL);
 
-        setListeners(hubConnection);
+        setListeners(connection);
 
-        hubConnection.onClosed(e -> {
+        connection.onClosed(e -> {
             Log.e(TAG, "onClosed: " + setTag() + ": " + e.getLocalizedMessage());
             onConnectionClosed();
             updateStatus(ConnectionStatus.Reconnecting);
             reconnect();
         });
 
-        return hubConnection;
+        return connection;
     }
 
     private void reconnect() {
         try {
-            if ((SystemClock.elapsedRealtime() - _lastReconnectedAt) > RESET_CONNECTION_RETRY_IN) {
-                _currentConnectionTry = 0;
+            long elapsed = SystemClock.elapsedRealtime() - lastReconnectedAt;
+            if (elapsed > RESET_CONNECTION_RETRY_IN) {
+                currentConnectionTry = 0;
             }
-            if (_currentConnectionTry < CONNECTION_RETRIES.length) {
-                _lastReconnectedAt = SystemClock.elapsedRealtime();
-                new Handler(Looper.getMainLooper())
-                        .postDelayed(() -> {
-                            if (!_isConnecting) {
-                                connect();
-                            }
-                        }, CONNECTION_RETRIES[_currentConnectionTry]);
-                _currentConnectionTry++;
+
+            if (currentConnectionTry < CONNECTION_RETRIES.length) {
+                lastReconnectedAt = SystemClock.elapsedRealtime();
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    if (!isConnecting) {
+                        connect();
+                    }
+                }, CONNECTION_RETRIES[currentConnectionTry]);
+
+                currentConnectionTry++;
             } else {
                 onConnectionClosed();
                 updateStatus(ConnectionStatus.Disconnected);
@@ -103,132 +115,151 @@ public abstract class SignalRUtil {
         }
     }
 
-    private void startObserveInternetConnection() {
-        DefaultConnectionUtil instance = DefaultConnectionUtil.getInstance(_ctx);
+    private void startInternetConnectionObserver() {
+        DefaultConnectionUtil instance = DefaultConnectionUtil.getInstance(context);
         if (instance != null) {
-            instance.addListener(_internetConnectionListener);
+            instance.addListener(internetConnectionListener);
         }
     }
 
-    private void stopObserveInternetConnection() {
-        DefaultConnectionUtil instance = DefaultConnectionUtil.getInstance(_ctx);
+    private void stopInternetConnectionObserver() {
+        DefaultConnectionUtil instance = DefaultConnectionUtil.getInstance(context);
         if (instance != null) {
-            instance.removeListener(_internetConnectionListener);
+            instance.removeListener(internetConnectionListener);
         }
     }
 
-    private String setTag() {
+    public String setTag() {
         return getClass().getSimpleName();
     }
 
-    private String setToken() {
+    public String setToken() {
         return null;
     }
 
     protected abstract String setUrl();
 
-    protected abstract void onConnected();
-
-    protected abstract void onConnectionClosed();
-
     protected abstract void setListeners(HubConnection connection);
 
     public CompletableFuture<HubConnection> connect() {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                updateStatus(ConnectionStatus.Connecting);
+        if (isConnected(hubConnection)) {
+            return CompletableFuture.completedFuture(hubConnection);
+        }
 
-                if (_hubConnection == null) {
-                    _hubConnection = connection();
+        if (isConnecting && connectionFuture != null) {
+            return connectionFuture.thenApply(hubConnection -> {
+                if (isConnected(hubConnection)) {
+                    Log.i(TAG, "ConnectionId: " + hubConnection.getConnectionId());
+                    return hubConnection;
                 }
-
-                if (canConnect()) {
-                    _isConnecting = true;
-                    _connectionFuture = _connect();
-                    _connectionFuture.get();
-                    _isConnecting = false;
-                    _connectionFuture = null;
-
-                    if (!isConnected()) {
-                        throw new Exception("Not Connected");
-                    }
-
-                    onConnected();
-                    updateStatus(ConnectionStatus.Connected);
-                    Log.i(TAG, "connection: Connected.");
-                    stopObserveInternetConnection();
-                }
-                return _hubConnection;
-            } catch (Exception e) {
-                Log.e(TAG, "connection: " + setTag() + ": " + e.getLocalizedMessage());
-                onConnectionClosed();
-                updateStatus(ConnectionStatus.Disconnected);
-                _isConnecting = false;
-                _connectionFuture = null;
-                startObserveInternetConnection();
                 return null;
-            }
-        });
+            }).exceptionally(e -> {
+                Log.e(TAG, "Error while waiting for connection: " + setTag(), e);
+                return null;
+            });
+        }
+
+        if (hubConnection == null) {
+            hubConnection = createConnection();
+        }
+
+        updateStatus(ConnectionStatus.Connecting);
+        isConnecting = true;
+        connectionFuture = new CompletableFuture<>();
+
+        dispose();
+        connectionDisposable = hubConnection.start().subscribe(
+                () -> {
+                    connectionFuture.complete(hubConnection);
+                    onConnected();
+                },
+                e -> {
+                    Log.e(TAG, "Connection error: " + e.getLocalizedMessage());
+                    connectionFuture.complete(null);
+                    onConnectionClosed();
+                });
+
+        return connectionFuture;
     }
 
-    private CompletableFuture<HubConnection> _connect() {
-        return CompletableFuture.supplyAsync(() -> {
-            _hubConnection.start().blockingAwait();
-            return _hubConnection;
-        }).exceptionally((err) -> null);
+    protected void onConnected() {
+        isConnecting = false;
+        connectionFuture = null;
+
+        if (isConnected()) {
+            Log.i(TAG, "Connected.");
+            onConnected();
+            updateStatus(ConnectionStatus.Connected);
+            stopInternetConnectionObserver();
+        } else {
+            onConnectionClosed();
+        }
     }
 
-    public CompletableFuture<Void> close() {
-        Log.i(TAG, "close: ");
-        return CompletableFuture.runAsync(() -> {
-            try {
-                if (isConnected()) {
-                    _hubConnection.stop().blockingAwait();
-                    Log.i(TAG, "closed: ");
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "close: " + setTag() + ": ", e);
-            }
-        });
+    protected void onConnectionClosed() {
+        isConnecting = false;
+        connectionFuture = null;
+
+        updateStatus(ConnectionStatus.Disconnected);
+        startInternetConnectionObserver();
     }
 
     public boolean isConnecting() {
-        return _isConnecting;
+        return isConnecting;
+    }
+
+    public boolean isConnected(HubConnection connection) {
+        return connection != null && connection.getConnectionState() == HubConnectionState.CONNECTED;
     }
 
     public boolean isConnected() {
-        return _hubConnection != null &&
-                _hubConnection.getConnectionState() == HubConnectionState.CONNECTED;
+        return isConnected(hubConnection);
     }
 
     public boolean canConnect() {
-        return !isConnecting() && !isConnected();
+        return !isConnecting && !isConnected();
     }
 
-    public CompletableFuture<HubConnection> getConnection(String Tag) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                if (_isConnecting && _connectionFuture != null) {
-                    _connectionFuture.join();
+    public CompletableFuture<HubConnection> getConnection(String tag) {
+        if (isConnecting && connectionFuture != null) {
+            return connectionFuture.thenApply(hubConnection -> {
+                if (isConnected(hubConnection)) {
+                    Log.i(TAG, "ConnectionId: " + hubConnection.getConnectionId());
+                    return hubConnection;
                 }
+                return null;
+            }).exceptionally(e -> {
+                Log.e(TAG, "Error waiting for connection: " + tag, e);
+                return null;
+            });
+        }
 
-                if (isConnected()) {
-                    Log.i(TAG, "getConnection: ConnectionId:" + _hubConnection.getConnectionId());
-                    return _hubConnection;
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "getConnection: " + setTag() + ": " + Tag + ": ", e);
-            }
-
-            return null;
-        });
+        return CompletableFuture.completedFuture(isConnected() ? hubConnection : null);
     }
 
-    public enum ConnectionStatus {
-        Disconnected,
-        Connecting,
-        Connected,
-        Reconnecting,
-        NotConnected
+    private Disposable connectionCloseDisposable;
+
+    public CompletableFuture<Void> close() {
+        Log.i(TAG, "Closing connection.");
+        CompletableFuture<Void> future = new CompletableFuture<>();
+
+        if (isConnected()) {
+            dispose();
+            connectionCloseDisposable = hubConnection.stop().subscribe(() -> {
+                future.complete(null);
+                Log.i(TAG, "Connection closed.");
+            }, future::completeExceptionally);
+        }
+
+        return future;
+    }
+
+    public void dispose() {
+        if (connectionDisposable != null && !connectionDisposable.isDisposed()) {
+            connectionDisposable.dispose();
+        }
+        if (connectionCloseDisposable != null && !connectionCloseDisposable.isDisposed()) {
+            connectionCloseDisposable.dispose();
+        }
     }
 }

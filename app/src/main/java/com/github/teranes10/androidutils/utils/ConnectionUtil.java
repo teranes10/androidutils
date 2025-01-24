@@ -12,6 +12,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 public class ConnectionUtil {
     private static final String TAG = "ConnectionUtil";
@@ -95,14 +96,16 @@ public class ConnectionUtil {
 
         @Override
         public void run() {
-            boolean isReachable = false;
-            try {
-                isReachable = NetworkUtil.isReachableAsync(url, CONNECTION_TIMEOUT).join();
-                Log.i(TAG, "checking internet reachability: " + isReachable);
-                updateInternetAvailability(isReachable);
-            } catch (Exception e) {
-                Log.e(TAG, "checking internet reachability: ", e);
-            }
+            NetworkUtil.isReachableAsync(url, CONNECTION_TIMEOUT)
+                    .thenAccept(this::next)
+                    .exceptionally(e -> {
+                        this.next(false);
+                        return null;
+                    });
+        }
+
+        private void next(boolean isReachable) {
+            updateInternetAvailability(isReachable);
 
             if (handler != null) {
                 if (!isReachable) {

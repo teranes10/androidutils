@@ -32,16 +32,7 @@ public class Utils {
     }
 
     public static boolean isNullOrEmpty(String string) {
-        return !(string != null && !string.trim().isEmpty());
-    }
-
-    public static boolean isNullOrEmpty(Supplier<String> supplier) {
-        try {
-            String string = supplier.get();
-            return !(string != null && !string.trim().isEmpty());
-        } catch (NullPointerException n) {
-            return true;
-        }
+        return string == null || string.trim().isEmpty();
     }
 
     public static boolean equal(String string1, String string2) {
@@ -61,7 +52,7 @@ public class Utils {
     }
 
     public static Double getOrDefault(Double val) {
-        return val != null ? val : 0;
+        return val != null ? val : 0.0;
     }
 
     public static Long getOrDefault(Long val) {
@@ -70,6 +61,16 @@ public class Utils {
 
     public static Boolean getOrDefault(Boolean val) {
         return val != null ? val : false;
+    }
+
+
+    public static boolean isNullOrEmpty(Supplier<String> supplier) {
+        try {
+            String string = supplier.get();
+            return !(string != null && !string.trim().isEmpty());
+        } catch (NullPointerException n) {
+            return true;
+        }
     }
 
     public static <T> T optional(Supplier<T> supplier, T val) {
@@ -101,23 +102,19 @@ public class Utils {
         return Color.argb(255, rnd.nextInt(256), rnd.nextInt(256), rnd.nextInt(256));
     }
 
-    public static double toFixed(double val) {
-        double finalVal = val;
-        val = optional(() -> finalVal, 0.0);
+    public static double toFixed(Double val) {
         DecimalFormat df = new DecimalFormat("#.00");
-        return Double.parseDouble(df.format(val));
+        return Double.parseDouble(df.format(getOrDefault(val)));
     }
 
-    public static double toFixed(double val, int decimals) {
+    public static double toFixed(Double val, int decimals) {
         StringBuilder pattern = new StringBuilder("#.");
         for (int i = 0; i < decimals; i++) {
             pattern.append("0");
         }
 
-        double finalVal = val;
-        val = optional(() -> finalVal, 0.0);
         DecimalFormat df = new DecimalFormat(pattern.toString());
-        return Double.parseDouble(df.format(val));
+        return Double.parseDouble(df.format(getOrDefault(val)));
     }
 
     public static String currencyFormat(double money) {
@@ -125,7 +122,7 @@ public class Utils {
     }
 
     public static String capitalizeFirstLetter(String original) {
-        if (original == null || original.length() == 0) {
+        if (original == null || original.isEmpty()) {
             return original;
         }
         return original.substring(0, 1).toUpperCase() + original.substring(1);
@@ -185,10 +182,12 @@ public class Utils {
     public static class CompositeKey {
         private final Object keyPart1;
         private final Object keyPart2;
+
         public CompositeKey(Object keyPart1, Object keyPart2) {
             this.keyPart1 = keyPart1;
             this.keyPart2 = keyPart2;
         }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
@@ -197,6 +196,7 @@ public class Utils {
             return Objects.equals(keyPart1, that.keyPart1) &&
                     Objects.equals(keyPart2, that.keyPart2);
         }
+
         @Override
         public int hashCode() {
             return Objects.hash(keyPart1, keyPart2);

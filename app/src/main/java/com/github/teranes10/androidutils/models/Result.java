@@ -1,6 +1,6 @@
 package com.github.teranes10.androidutils.models;
 
-import static com.github.teranes10.androidutils.utils.Utils.optional;
+import static com.github.teranes10.androidutils.utils.Utils.getOrDefault;
 
 public class Result<T> {
     private boolean isSuccess;
@@ -32,7 +32,7 @@ public class Result<T> {
     }
 
     public String getMessage() {
-        return optional(() -> this.message, "");
+        return getOrDefault(this.message);
     }
 
     public T getData() {

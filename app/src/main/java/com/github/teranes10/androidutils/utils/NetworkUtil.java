@@ -155,7 +155,7 @@ public class NetworkUtil {
             } finally {
                 TrafficStats.clearThreadStatsTag(); // Clear the tag after the network operation is done
             }
-        });
+        }).exceptionally(e -> false);
     }
 
     public static boolean isResponseSuccessful(int responseCode) {
