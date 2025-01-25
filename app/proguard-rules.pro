@@ -19,3 +19,33 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Keep all public APIs
+-keep public class com.github.teranes10.androidutils.** { *; }
+
+# Retrofit
+-keepclassmembers class ** {
+    @retrofit2.http.* <methods>;
+}
+
+# Gson
+-keep class com.google.gson.** { *; }
+
+# Room Database
+-keep @androidx.room.Entity class *
+-keep @androidx.room.Dao class *
+-keep class * extends androidx.room.RoomDatabase { *; }
+
+# SignalR
+-keep class com.microsoft.signalr.** { *; }
+
+# OkHttp
+-dontwarn okhttp3.**
+-keep class okhttp3.** { *; }
+
+# Firebase
+-keepnames class com.google.firebase.** { *; }
+
+# General
+-dontwarn java.awt.**
+-dontwarn javax.annotation.**
