@@ -17,7 +17,6 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
-            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -80,7 +79,7 @@ afterEvaluate {
                 from(components["release"])
                 groupId = "com.github.teranes10"
                 artifactId = "androidutils"
-                version = "1.1.9"
+                version = "1.2.0"
                 pom {
                     name.set("AndroidUtils")
                     description.set("A utility library for Android applications")
