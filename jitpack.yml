@@ -1,2 +1,11 @@
 jdk:
   - openjdk17
+
+install:
+  - ./gradlew clean assembleRelease publishReleasePublicationToMavenRepository
+
+build:
+  artifacts:
+    - app/build/outputs/aar/androidutils-release.aar
+    - app/build/outputs/mapping/release/mapping.txt
+    - app/build/libs/
