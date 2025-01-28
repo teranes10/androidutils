@@ -8,6 +8,7 @@ import android.content.Context;
 import android.graphics.PixelFormat;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -27,21 +28,22 @@ public class FloatingAlert {
     private int _x = 0;
     private int _y = 0;
     private int _gravity = Gravity.CENTER;
+    private float _alpha = 1;
+    private Integer _layout;
     private View floatView;
     private WindowManager.LayoutParams floatWindowLayoutParam;
     private WindowManager windowManager;
     private OnViewCreated _onViewCreated;
     private OnViewBinding _onViewBinding;
     private OnClickListener _onClickListener;
+    private OnClickListener _onLongClickListener;
     private OnClickListener _onDoubleClickListener;
     private final Context _ctx;
     private static final String TAG = "FloatingAlert";
 
-    public FloatingAlert(Context context, int layout) {
+    public FloatingAlert(Context context, Integer layout) {
         _ctx = context;
-        windowManager = (WindowManager) context.getApplicationContext().getSystemService(WINDOW_SERVICE);
-        LayoutInflater inflater = (LayoutInflater) context.getApplicationContext().getSystemService(LAYOUT_INFLATER_SERVICE);
-        floatView = inflater.inflate(layout, null);
+        _layout = layout;
     }
 
     public FloatingAlert(Context context) {
@@ -55,13 +57,6 @@ public class FloatingAlert {
 
     public FloatingAlert setFullScreen(boolean fullScreen) {
         _fullscreen = fullScreen;
-        return this;
-    }
-
-    public FloatingAlert bind() {
-        windowManager = (WindowManager) _ctx.getApplicationContext().getSystemService(WINDOW_SERVICE);
-        LayoutInflater inflater = (LayoutInflater) _ctx.getApplicationContext().getSystemService(LAYOUT_INFLATER_SERVICE);
-        floatView = _onViewBinding.onViewCreate(inflater, this);
         return this;
     }
 
@@ -82,9 +77,49 @@ public class FloatingAlert {
         return this;
     }
 
-    public FloatingAlert build() {
-        int LAYOUT_TYPE = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+    public FloatingAlert setAlpha(float alpha) {
+        _alpha = alpha;
+        return this;
+    }
 
+    private boolean buildView() {
+        try {
+            if (!PermissionUtil.hasOverlayPermission(_ctx)) {
+                Log.e(TAG, "buildView: no overlay permission");
+                return false;
+            }
+
+            windowManager = (WindowManager) _ctx.getApplicationContext().getSystemService(WINDOW_SERVICE);
+            if (windowManager == null) {
+                Log.e(TAG, "buildView: window manager is null");
+                return false;
+            }
+
+            LayoutInflater inflater = (LayoutInflater) _ctx.getApplicationContext().getSystemService(LAYOUT_INFLATER_SERVICE);
+            if (inflater == null) {
+                Log.e(TAG, "buildView: layout inflater is null");
+                return false;
+            }
+
+            if (_layout != null) {
+                floatView = inflater.inflate(_layout, null);
+                return true;
+            }
+
+            if (_onViewBinding != null) {
+                floatView = _onViewBinding.onViewCreate(inflater, this);
+                return true;
+            }
+
+            Log.e(TAG, "buildView: layout is null");
+        } catch (Exception e) {
+            Log.e(TAG, "buildView: ", e);
+        }
+
+        return false;
+    }
+
+    private void setupParameters() {
         if (_fullscreen) {
             floatWindowLayoutParam = new WindowManager.LayoutParams(
                     WindowManager.LayoutParams.MATCH_PARENT,
@@ -100,49 +135,60 @@ public class FloatingAlert {
             floatWindowLayoutParam = new WindowManager.LayoutParams(
                     (_width > 0 ? (int) (_width * (0.55f)) : _width == 0 ? WindowManager.LayoutParams.WRAP_CONTENT : _width),
                     (_height > 0 ? (int) (_height * (0.58f)) : _height == 0 ? WindowManager.LayoutParams.WRAP_CONTENT : _height),
-                    LAYOUT_TYPE, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT
+                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT
             );
         }
 
         floatWindowLayoutParam.gravity = _gravity;
         floatWindowLayoutParam.x = _x;
         floatWindowLayoutParam.y = _y;
+    }
 
-        if (_onViewCreated != null) {
-            _onViewCreated.onViewCreated(floatView, this);
+    private void setupTouchListener() {
+        if (windowManager == null || floatView == null || floatWindowLayoutParam == null) {
+            Log.e(TAG, "setupTouchListener: invalid arguments");
+            return;
         }
 
-        if (_draggable) {
-            floatView.setOnTouchListener(new View.OnTouchListener() {
-                final WindowManager.LayoutParams floatWindowLayoutUpdateParam = floatWindowLayoutParam;
-                double x;
-                double y;
-                double px;
-                double py;
+        floatView.setOnTouchListener(new View.OnTouchListener() {
+            final WindowManager.LayoutParams floatWindowLayoutUpdateParam = floatWindowLayoutParam;
+            double x;
+            double y;
+            double px;
+            double py;
 
-                private final GestureDetector gestureDetector = new GestureDetector(_ctx, new GestureDetector.SimpleOnGestureListener() {
-                    @Override
-                    public boolean onSingleTapConfirmed(@NonNull MotionEvent e) {
-                        if (_onClickListener != null) {
-                            _onClickListener.onClick(FloatingAlert.this);
-                        }
-                        return super.onSingleTapConfirmed(e);
-                    }
-
-                    @Override
-                    public boolean onDoubleTap(@NonNull MotionEvent e) {
-                        if (_onDoubleClickListener != null) {
-                            _onDoubleClickListener.onClick(FloatingAlert.this);
-                        }
-                        return super.onDoubleTap(e);
-                    }
-                });
-
-                @SuppressLint("ClickableViewAccessibility")
+            private final GestureDetector gestureDetector = new GestureDetector(_ctx, new GestureDetector.SimpleOnGestureListener() {
                 @Override
-                public boolean onTouch(View v, MotionEvent event) {
-                    gestureDetector.onTouchEvent(event);
+                public boolean onSingleTapConfirmed(@NonNull MotionEvent e) {
+                    if (_onClickListener != null) {
+                        _onClickListener.onClick(FloatingAlert.this);
+                    }
+                    return super.onSingleTapConfirmed(e);
+                }
 
+                @Override
+                public boolean onDoubleTap(@NonNull MotionEvent e) {
+                    if (_onDoubleClickListener != null) {
+                        _onDoubleClickListener.onClick(FloatingAlert.this);
+                    }
+                    return super.onDoubleTap(e);
+                }
+
+                @Override
+                public void onLongPress(@NonNull MotionEvent e) {
+                    if (_onLongClickListener != null) {
+                        _onLongClickListener.onClick(FloatingAlert.this);
+                    }
+                    super.onLongPress(e);
+                }
+            });
+
+            @SuppressLint("ClickableViewAccessibility")
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                gestureDetector.onTouchEvent(event);
+
+                if (_draggable) {
                     switch (event.getAction()) {
                         case MotionEvent.ACTION_DOWN -> {
                             x = floatWindowLayoutUpdateParam.x;
@@ -156,14 +202,36 @@ public class FloatingAlert {
                             windowManager.updateViewLayout(floatView, floatWindowLayoutUpdateParam);
                         }
                     }
-                    return false;
                 }
-            });
+
+                return false;
+            }
+        });
+    }
+
+    public FloatingAlert build() {
+        if (!buildView() || floatView == null) {
+            return this;
         }
+
+        floatView.setAlpha(_alpha);
+
+        if (_onViewCreated != null) {
+            _onViewCreated.onViewCreated(floatView, this);
+        }
+
+        setupParameters();
+        setupTouchListener();
+
         return this;
     }
 
     public void updatePosition(double x, double y) {
+        if (windowManager == null || floatView == null || floatWindowLayoutParam == null) {
+            Log.e(TAG, "updatePosition: invalid arguments");
+            return;
+        }
+
         final WindowManager.LayoutParams floatWindowLayoutUpdateParam = floatWindowLayoutParam;
         floatWindowLayoutUpdateParam.x = (int) x;
         floatWindowLayoutUpdateParam.y = (int) y;
@@ -174,13 +242,9 @@ public class FloatingAlert {
         return floatView;
     }
 
-    public FloatingAlert setAlpha(float alpha) {
-        floatView.setAlpha(alpha);
-        return this;
-    }
-
     public boolean show() {
-        if (!PermissionUtil.hasOverlayPermission(_ctx)) {
+        if (windowManager == null || floatView == null || floatWindowLayoutParam == null) {
+            Log.e(TAG, "show: invalid arguments");
             return false;
         }
 
@@ -215,18 +279,16 @@ public class FloatingAlert {
         windowManager.removeView(floatView);
     }
 
-    private void update() {
-        windowManager.updateViewLayout(floatView, floatWindowLayoutParam);
+    public interface OnViewCreated {
+        void onViewCreated(View view, FloatingAlert alert);
     }
 
-    private void setNonTouchable() {
-        floatWindowLayoutParam.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
-        update();
+    public interface OnViewBinding {
+        View onViewCreate(LayoutInflater inflater, FloatingAlert alert);
     }
 
-    private void setTouchable() {
-        floatWindowLayoutParam.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
-        update();
+    public interface OnClickListener {
+        void onClick(FloatingAlert alert);
     }
 
     public FloatingAlert bindView(OnViewBinding binding) {
@@ -244,20 +306,13 @@ public class FloatingAlert {
         return this;
     }
 
-    public FloatingAlert setOnDoubleClickListener(OnClickListener onClickListener) {
-        _onDoubleClickListener = onClickListener;
+    public FloatingAlert setOnLongClickListener(OnClickListener onClickListener) {
+        _onLongClickListener = onClickListener;
         return this;
     }
 
-    public interface OnViewCreated {
-        void onViewCreated(View view, FloatingAlert alert);
-    }
-
-    public interface OnViewBinding {
-        View onViewCreate(LayoutInflater inflater, FloatingAlert alert);
-    }
-
-    public interface OnClickListener {
-        void onClick(FloatingAlert alert);
+    public FloatingAlert setOnDoubleClickListener(OnClickListener onClickListener) {
+        _onDoubleClickListener = onClickListener;
+        return this;
     }
 }

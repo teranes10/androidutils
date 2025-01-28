@@ -17,7 +17,6 @@ public class FloatingLoading {
                             CustomLoadingBinding.inflate(inflater, null, false);
                     return binding.getRoot();
                 })
-                .bind()
                 .setAlpha(95)
                 .build();
     }

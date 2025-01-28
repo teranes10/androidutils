@@ -15,7 +15,7 @@ public abstract class TimerUtil {
 
     public abstract long getInterval();
 
-    public abstract void execute();
+    public abstract CompletableFuture<?> execute();
 
     public void start() {
         if (_handlerThread != null && _handlerThread.isAlive()) {
@@ -31,12 +31,9 @@ public abstract class TimerUtil {
             _handler = new Handler(_handlerThread.getLooper());
         }
 
-        _runnable = () -> CompletableFuture.runAsync(() -> {
-            try {
-                execute();
-            } catch (Exception e) {
-                Log.e(getTag(), "execute: ", e);
-            }
+        _runnable = () -> execute().exceptionally(e -> {
+            Log.e("TimerUtil:" + getTag(), "execute: ", e);
+            return null;
         }).thenRun(() -> {
             long interval = getInterval();
             if (interval > 0) {

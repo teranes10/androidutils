@@ -36,7 +36,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    packaging {
+    packagingOptions {
         resources.excludes += listOf(
             "META-INF/*.kotlin_module",
             "META-INF/DEPENDENCIES",
