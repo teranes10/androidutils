@@ -26,9 +26,8 @@ public class CustomFloatingAlert extends CustomAlertBase<CustomFloatingAlert> {
             listener.onCreate(_dialog);
         }
 
-        bindView(context, _dialog.getView());
-
         _dialog.build();
+        bindView(context, _dialog.getView());
     }
 
     @Override

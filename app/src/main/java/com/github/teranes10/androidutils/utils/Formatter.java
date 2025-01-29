@@ -121,7 +121,7 @@ public class Formatter {
 
     public static String getLocalDate(String utcFormat, String utcDate, String resultFormat) {
         try {
-            if(utcDate == null || utcDate.trim().isEmpty()) {
+            if (utcDate == null || utcDate.trim().isEmpty()) {
                 return "";
             }
 
@@ -204,15 +204,20 @@ public class Formatter {
         }
     }
 
-    public static String timeFormat(long millis) {
+    public static String formatTime(long millis) {
+        return formatTime(millis, true);
+    }
+
+    public static String formatTime(long millis, boolean includeHours) {
         if (millis <= 0) {
-            return "00:00:00";
+            return includeHours ? "00:00:00" : "00:00";
         }
 
         int seconds = (int) (millis / 1000) % 60;
         int minutes = (int) ((millis / (1000 * 60)) % 60);
         int hours = (int) ((millis / (1000 * 60 * 60)) % 24);
 
-        return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+        return includeHours ? String.format("%02d:%02d:%02d", hours, minutes, seconds)
+                : String.format("%02d:%02d", minutes, seconds);
     }
 }
