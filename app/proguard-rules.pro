@@ -49,3 +49,6 @@
 # General
 -dontwarn java.awt.**
 -dontwarn javax.annotation.**
+
+-keep class java.lang.invoke.StringConcatFactory { *; }
+-dontwarn java.lang.invoke.StringConcatFactory
