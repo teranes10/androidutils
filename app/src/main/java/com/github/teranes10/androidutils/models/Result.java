@@ -19,6 +19,22 @@ public class Result<T> {
         this.message = message;
     }
 
+    public boolean isSuccess() {
+        return success;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public T getData() {
+        return data;
+    }
+
+    public ResultType getType() {
+        return type;
+    }
+
     private static <T> Result<T> create(boolean success, T data, String message, ResultType type) {
         return new Result<>(success, data, message, type);
     }
