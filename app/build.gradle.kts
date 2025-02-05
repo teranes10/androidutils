@@ -1,5 +1,7 @@
 plugins {
     id("com.android.library")
+    alias(libs.plugins.kotlin.android)
+    id("com.google.devtools.ksp")
     id("maven-publish")
 }
 
@@ -35,7 +37,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.1"
+    }
     packagingOptions {
         resources.excludes += listOf(
             "META-INF/*.kotlin_module",
@@ -49,6 +56,7 @@ android {
             "META-INF/services/**",
             "META-INF/*.properties",
             "META-INF/*.version",
+            "/META-INF/{AL2.0,LGPL2.1}",
             "*.json"
         )
     }
