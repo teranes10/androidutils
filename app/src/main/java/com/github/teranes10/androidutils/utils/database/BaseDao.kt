@@ -1,181 +1,110 @@
-package com.github.teranes10.androidutils.utils.database;
+package com.github.teranes10.androidutils.utils.database
 
-import androidx.room.Dao;
-import androidx.room.Delete;
-import androidx.room.Insert;
-import androidx.room.OnConflictStrategy;
-import androidx.room.RawQuery;
-import androidx.sqlite.db.SimpleSQLiteQuery;
-import androidx.sqlite.db.SupportSQLiteQuery;
-
-import com.github.teranes10.androidutils.models.Pagination;
-
-import java.lang.reflect.ParameterizedType;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.RawQuery
+import androidx.sqlite.db.SimpleSQLiteQuery
+import androidx.sqlite.db.SupportSQLiteQuery
 
 @Dao
-public abstract class BaseDao<T> {
-
-    @RawQuery
-    protected abstract List<T> doGetAll(SupportSQLiteQuery query);
-
-    public List<T> getAll() {
-        SimpleSQLiteQuery query = new SimpleSQLiteQuery(
-                "SELECT * FROM " + getTableName());
-        return doGetAll(query);
-    }
-
-    public CompletableFuture<List<T>> getAllAsync() {
-        return CompletableFuture.supplyAsync(this::getAll);
-    }
-
-    @RawQuery
-    protected abstract List<T> doPagination(SupportSQLiteQuery query);
-
-    public Pagination<T> pagination(int page, int itemsPerPage) {
-        int offset = (page - 1) * itemsPerPage;
-
-        SimpleSQLiteQuery query = new SimpleSQLiteQuery(
-                "SELECT * FROM " + getTableName() +
-                        " LIMIT " + offset + ", " + itemsPerPage);
-
-        return new Pagination<>(
-                doPagination(query),
-                (int) count()
-        );
-    }
-
-    public CompletableFuture<Pagination<T>> paginationAsync(int page, int itemsPerPage) {
-        return CompletableFuture.supplyAsync(() -> pagination(page, itemsPerPage));
-    }
-
-    @RawQuery
-    protected abstract long doCount(SupportSQLiteQuery query);
-
-    public long count() {
-        SimpleSQLiteQuery query = new SimpleSQLiteQuery(
-                "SELECT COUNT(*) FROM " + getTableName());
-        return doCount(query);
-    }
-
-    public CompletableFuture<Long> countAsync() {
-        return CompletableFuture.supplyAsync(this::count);
-    }
+abstract class BaseDao<T>(private val tableName: String) {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun save(item: T): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    protected abstract long doSave(T entity);
-
-    public long save(T entity) {
-        return doSave(entity);
-    }
-
-    public CompletableFuture<Long> saveAsync(T entity) {
-        return CompletableFuture.supplyAsync(() -> save(entity));
-    }
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    protected abstract long[] doSave(List<T> entities);
-
-    public long[] save(List<T> entities) {
-        return doSave(entities);
-    }
-
-    public CompletableFuture<long[]> saveAsync(List<T> entities) {
-        return CompletableFuture.supplyAsync(() -> save(entities));
-    }
+    abstract suspend fun save(items: List<T>): LongArray
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    protected abstract long doInsert(T entity);
-
-    public long insert(T entity) {
-        return doInsert(entity);
-    }
-
-    public CompletableFuture<Long> insertAsync(T entity) {
-        return CompletableFuture.supplyAsync(() -> insert(entity));
-    }
+    abstract suspend fun insert(item: T): Long
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    protected abstract long[] doInsert(List<T> entities);
-
-    public long[] insert(List<T> entities) {
-        return doInsert(entities);
-    }
-
-    public CompletableFuture<long[]> insertAsync(List<T> entities) {
-        return CompletableFuture.supplyAsync(() -> insert(entities));
-    }
+    abstract suspend fun insert(items: List<T>): LongArray
 
     @Delete
-    protected abstract int doDelete(T entity);
-
-    public boolean delete(T entity) {
-        return doDelete(entity) > 0;
-    }
-
-    public CompletableFuture<Boolean> deleteAsync(T entity) {
-        return CompletableFuture.supplyAsync(() -> delete(entity));
-    }
+    abstract suspend fun doDelete(item: T): Int
 
     @Delete
-    protected abstract int doDelete(List<T> entities);
-
-    public boolean delete(List<T> entities) {
-        return doDelete(entities) > 0;
-    }
-
-    public CompletableFuture<Boolean> deleteAsync(List<T> entities) {
-        return CompletableFuture.supplyAsync(() -> delete(entities));
-    }
+    abstract suspend fun doDelete(items: List<T>): Int
 
     @RawQuery
-    protected abstract long doDeleteAll(SupportSQLiteQuery query);
-
-    public boolean deleteAll() {
-        SimpleSQLiteQuery query = new SimpleSQLiteQuery(
-                "DELETE FROM " + getTableName()
-        );
-        return doDeleteAll(query) > 0;
-    }
-
-    public CompletableFuture<Boolean> deleteAllAsync() {
-        return CompletableFuture.supplyAsync(this::deleteAll);
-    }
+    abstract suspend fun doGetAll(query: SupportSQLiteQuery): List<T>
 
     @RawQuery
-    protected abstract long doDeleteByIds(SupportSQLiteQuery query);
+    abstract suspend fun doGet(query: SupportSQLiteQuery): T?
 
-    public <Tv extends Number> boolean deleteByIds(List<Tv> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return false;
+    @RawQuery
+    abstract suspend fun doScalar(query: SupportSQLiteQuery): Long
+
+    private fun buildQuery(query: String, vararg args: Any): SupportSQLiteQuery {
+        return SimpleSQLiteQuery(query, args)
+    }
+
+    suspend fun getAll(): List<T> {
+        val query = buildQuery("SELECT * FROM $tableName")
+        return doGetAll(query)
+    }
+
+    suspend fun getById(id: Long): T? {
+        val query = buildQuery("SELECT * FROM $tableName WHERE id = ? LIMIT 1", id)
+        return doGet(query)
+    }
+
+    suspend fun getFirst(): T? {
+        val query = buildQuery("SELECT * FROM $tableName ORDER BY id ASC LIMIT 1")
+        return doGet(query)
+    }
+
+    suspend fun getLast(): T? {
+        val query = buildQuery("SELECT * FROM $tableName ORDER BY id DESC LIMIT 1")
+        return doGet(query)
+    }
+
+    suspend fun count(): Long {
+        val query = buildQuery("SELECT COUNT(*) FROM $tableName")
+        return doScalar(query)
+    }
+
+    suspend fun pagination(page: Int, pageSize: Int): Pagination<T> {
+        val offset = (page - 1) * pageSize
+        val query = buildQuery("SELECT * FROM $tableName LIMIT ?, ?", offset, pageSize)
+        return Pagination(doGetAll(query), count())
+    }
+
+    suspend fun deleteAll(): Boolean {
+        val query = buildQuery("DELETE FROM $tableName")
+        return doScalar(query) > 0
+    }
+
+    suspend fun deleteById(id: Long): Boolean {
+        val query = buildQuery("DELETE FROM $tableName WHERE id = ?", id)
+        return doScalar(query) > 0
+    }
+
+    suspend fun deleteByIds(ids: List<Number>): Boolean {
+        if (ids.isNotEmpty()) {
+            val placeholders = ids.joinToString(", ") { "?" }
+            val query = buildQuery(
+                "DELETE FROM $tableName WHERE id IN ($placeholders)", *ids.toTypedArray()
+            )
+            return doScalar(query) > 0
         }
-
-        StringBuilder placeholders = new StringBuilder();
-        for (int i = 0; i < ids.size(); i++) {
-            placeholders.append("?");
-            if (i < ids.size() - 1) {
-                placeholders.append(", ");
-            }
-        }
-
-        String queryString = "DELETE FROM " + getTableName() + " WHERE id IN (" + placeholders + ")";
-        SimpleSQLiteQuery query = new SimpleSQLiteQuery(queryString, ids.toArray());
-
-        return doDeleteByIds(query) > 0;
+        return false
     }
 
-    public <Tv extends Number> CompletableFuture<Boolean> deleteByIdsAsync(List<Tv> ids) {
-        return CompletableFuture.supplyAsync(() -> deleteByIds(ids));
+    suspend fun deleteAllBeforeId(id: Long): Boolean {
+        val query = buildQuery("DELETE FROM $tableName WHERE id <= ?", id)
+        return doScalar(query) > 0
     }
 
-    protected String getTableName() {
-        ParameterizedType parameterizedType = getClass().getSuperclass() != null ?
-                ((ParameterizedType) getClass().getSuperclass().getGenericSuperclass()) : null;
-
-        Class<?> tableClass = parameterizedType != null && parameterizedType.getActualTypeArguments().length > 0 ?
-                (Class<?>) parameterizedType.getActualTypeArguments()[0] : null;
-
-        return tableClass != null ? tableClass.getSimpleName() : "";
+    suspend fun delete(item: T): Boolean {
+        return doDelete(item) > 0
     }
+
+    suspend fun delete(items: List<T>): Boolean {
+        return doDelete(items) > 0
+    }
+
+    data class Pagination<T>(val items: List<T>, val totalItems: Long)
 }

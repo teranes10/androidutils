@@ -1,11 +1,7 @@
 package com.github.teranes10.androidutils.models;
 
-import static com.github.teranes10.androidutils.utils.Utils.getOrDefault;
-
 public class Result<T> {
-    private boolean isSuccess;
     private final boolean success;
-    private String status;
     private final String message;
     private final T data;
     private ResultType type = ResultType.Unknown;
@@ -22,23 +18,6 @@ public class Result<T> {
         this.data = data;
         this.message = message;
     }
-
-    public Boolean isSuccess() {
-        return (status != null && status.equals("success")) || success || isSuccess;
-    }
-
-    public ResultType getType() {
-        return type;
-    }
-
-    public String getMessage() {
-        return getOrDefault(this.message);
-    }
-
-    public T getData() {
-        return data;
-    }
-
 
     private static <T> Result<T> create(boolean success, T data, String message, ResultType type) {
         return new Result<>(success, data, message, type);
@@ -79,9 +58,7 @@ public class Result<T> {
     @Override
     public String toString() {
         return "Result{" +
-                "isSuccess=" + isSuccess +
-                ", success=" + success +
-                ", status='" + status + '\'' +
+                "success=" + success +
                 ", message='" + message + '\'' +
                 ", data=" + data +
                 ", type=" + type +
