@@ -1,6 +1,6 @@
-package com.example.mytaxy.extensions
+package com.github.teranes10.androidutils.extensions
 
-import com.example.mytaxy.extensions.RxJavaExtensions.await
+import com.github.teranes10.androidutils.extensions.RxJavaExtensions.await
 import com.microsoft.signalr.HubConnection
 
 object SignalRExtensions {

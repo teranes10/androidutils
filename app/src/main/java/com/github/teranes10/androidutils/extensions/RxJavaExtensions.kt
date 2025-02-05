@@ -1,4 +1,4 @@
-package com.example.mytaxy.extensions
+package com.github.teranes10.androidutils.extensions
 
 import io.reactivex.rxjava3.core.Single
 import kotlinx.coroutines.suspendCancellableCoroutine

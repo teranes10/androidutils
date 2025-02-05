@@ -1,4 +1,4 @@
-package com.example.mytaxy.extensions
+package com.github.teranes10.androidutils.extensions
 
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.concurrent.CompletableFuture

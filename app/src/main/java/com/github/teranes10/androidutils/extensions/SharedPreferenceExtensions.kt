@@ -1,4 +1,4 @@
-package com.example.mytaxy.extensions
+package com.github.teranes10.androidutils.extensions
 
 import android.content.SharedPreferences
 
