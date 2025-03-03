@@ -11,6 +11,7 @@ import android.net.TrafficStats;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
+import android.telephony.CellIdentity;
 import android.telephony.CellIdentityGsm;
 import android.telephony.CellIdentityLte;
 import android.telephony.CellIdentityNr;
@@ -18,6 +19,7 @@ import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.CellInfoLte;
 import android.telephony.CellInfoNr;
+import android.telephony.CellSignalStrength;
 import android.telephony.CellSignalStrengthGsm;
 import android.telephony.CellSignalStrengthLte;
 import android.telephony.CellSignalStrengthNr;
@@ -92,53 +94,64 @@ public class NetworkUtil {
         return RSSI + "dB";
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.R)
     public static CellTowerInfo getCellInfo(Context ctx) {
-        // only works for the 1st registered SIM and only works with 4G
         TelephonyManager tel = (TelephonyManager) ctx.getApplicationContext().getSystemService(Context.TELEPHONY_SERVICE);
-        if (ActivityCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            List<android.telephony.CellInfo> infoList = tel.getAllCellInfo();
-            for (CellInfo info : infoList) {
-                if (info.isRegistered()) {
-                    if (info instanceof CellInfoGsm) {
-                        CellSignalStrengthGsm gsm = ((CellInfoGsm) info).getCellSignalStrength();
-                        CellIdentityGsm identityGsm = ((CellInfoGsm) info).getCellIdentity();
-                        return new CellTowerInfo(
-                                "GSM",
-                                "" + identityGsm.getCid(),
-                                "" + gsm.getDbm(),
-                                "" + identityGsm.getLac(),
-                                identityGsm.getMccString(),
-                                identityGsm.getMncString(),
-                                -1);
-                    } else if (info instanceof CellInfoLte) {
-                        CellSignalStrengthLte lte = ((CellInfoLte) info).getCellSignalStrength();
-                        CellIdentityLte identityLte = ((CellInfoLte) info).getCellIdentity();
-                        return new CellTowerInfo(
-                                "LTE",
-                                "" + identityLte.getCi(),
-                                "" + lte.getDbm(),
-                                "" + identityLte.getTac(),
-                                identityLte.getMccString(),
-                                identityLte.getMncString(),
-                                identityLte.getPci());
-                    } else if (info instanceof CellInfoNr) {
-                        CellSignalStrengthNr lte = (CellSignalStrengthNr) info.getCellSignalStrength();
-                        CellIdentityNr identityLte = (CellIdentityNr) info.getCellIdentity();
-                        return new CellTowerInfo(
-                                "Nr : " + identityLte.getMccString() + ", " + identityLte.getMncString(),
-                                "" + identityLte.getNci(),
-                                "" + lte.getDbm(),
-                                "" + identityLte.getTac(),
-                                identityLte.getMccString(),
-                                identityLte.getMncString(),
-                                identityLte.getPci());
-                    }
+
+        if (ActivityCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return null;
+        }
+
+        List<CellInfo> infoList = tel.getAllCellInfo();
+        if (infoList == null || infoList.isEmpty()) {
+            return null;
+        }
+
+        for (CellInfo info : infoList) {
+            if (!info.isRegistered()) continue;
+
+            if (android.os.Build.VERSION.SDK_INT >= 28) {
+                if (info instanceof CellInfoGsm cellInfoGsm) {
+                    CellIdentityGsm identity = cellInfoGsm.getCellIdentity();
+                    return createCellTowerInfo("GSM", identity, cellInfoGsm.getCellSignalStrength(), -1);
                 }
+                if (info instanceof CellInfoLte cellInfoLte) {
+                    CellIdentityLte identity = cellInfoLte.getCellIdentity();
+                    return createCellTowerInfo("LTE", identity, cellInfoLte.getCellSignalStrength(), identity.getPci());
+                }
+            }
+            if (android.os.Build.VERSION.SDK_INT >= 30 && info instanceof CellInfoNr cellInfoNr) {
+                CellIdentityNr identity = (CellIdentityNr) cellInfoNr.getCellIdentity();
+                return createCellTowerInfo("NR", identity, cellInfoNr.getCellSignalStrength(), identity.getPci());
             }
         }
 
         return null;
+    }
+
+    private static CellTowerInfo createCellTowerInfo(String type, CellIdentity identity, CellSignalStrength signalStrength, int pci) {
+        String mcc = "", mnc = "";
+        int id = -1, area = -1;
+
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            if (identity instanceof CellIdentityGsm gsm) {
+                mcc = gsm.getMccString() != null ? gsm.getMccString() : "";
+                mnc = gsm.getMncString() != null ? gsm.getMncString() : "";
+                id = gsm.getCid();
+                area = gsm.getLac();
+            } else if (identity instanceof CellIdentityLte lte) {
+                mcc = lte.getMccString() != null ? lte.getMccString() : "";
+                mnc = lte.getMncString() != null ? lte.getMncString() : "";
+                id = lte.getCi();
+                area = lte.getTac();
+            } else if (android.os.Build.VERSION.SDK_INT >= 30 && identity instanceof CellIdentityNr nr) {
+                mcc = nr.getMccString() != null ? nr.getMccString() : "";
+                mnc = nr.getMncString() != null ? nr.getMncString() : "";
+                id = (int) nr.getNci();
+                area = nr.getTac();
+            }
+        }
+
+        return new CellTowerInfo(type, String.valueOf(id), String.valueOf(signalStrength.getDbm()), String.valueOf(area), mcc, mnc, pci);
     }
 
     public static CompletableFuture<Boolean> isReachableAsync(String url, int timeout) {

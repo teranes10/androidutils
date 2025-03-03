@@ -1,71 +1,65 @@
-package com.github.teranes10.androidutils.utils;
+package com.github.teranes10.androidutils.utils
 
-import android.os.Handler;
-import android.os.HandlerThread;
-import android.util.Log;
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
-import java.util.concurrent.CompletableFuture;
+abstract class TimerUtil(
+    private var interval: Long,
+    private val tag: String = "TimerUtil",
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+) {
+    private var job: Job? = null
 
-public abstract class TimerUtil {
-    private HandlerThread _handlerThread;
-    private Handler _handler;
-    private Runnable _runnable;
+    abstract suspend fun execute()
 
-    public abstract String getTag();
+    fun start(immediate: Boolean = false) {
+        if (job?.isActive == true) return
 
-    public abstract long getInterval();
-
-    public abstract CompletableFuture<?> execute();
-
-    public void start() {
-        if (_handlerThread != null && _handlerThread.isAlive()) {
-            return; // Already started
-        }
-
-        if (_handlerThread == null) {
-            _handlerThread = new HandlerThread(getTag());
-            _handlerThread.start();
-        }
-
-        if (_handler == null) {
-            _handler = new Handler(_handlerThread.getLooper());
-        }
-
-        _runnable = () -> execute().exceptionally(e -> {
-            Log.e("TimerUtil:" + getTag(), "execute: ", e);
-            return null;
-        }).thenRun(() -> {
-            long interval = getInterval();
-            if (interval > 0) {
-                _handler.postDelayed(_runnable, interval);
+        job = scope.launch {
+            if(immediate) {
+                executeSafely()
             }
-        });
 
-        _handler.post(_runnable);
-    }
-
-    public void stop() {
-        if (_handler != null) {
-            _handler.removeCallbacksAndMessages(null);
-            _handler = null;
-        }
-        if (_handlerThread != null) {
-            _handlerThread.quit();
-            _handlerThread = null;
+            while (isActive) {
+                executeSafely()
+                delay(interval)
+            }
         }
     }
 
-    public void reset() {
-        if (_handler != null && _runnable != null) {
-            _handler.removeCallbacksAndMessages(null);
-            _handler.postDelayed(_runnable, getInterval());
+    fun stop() {
+        job?.cancel()
+        job = null
+    }
+
+    fun restart(immediate: Boolean = false) {
+        stop()
+        start(immediate)
+    }
+
+    fun updateInterval(newInterval: Long) {
+        if (interval != newInterval) {
+            interval = newInterval
+            restart()
         }
     }
 
-    public void run() {
-        if (_handler != null && _runnable != null) {
-            _handler.removeCallbacksAndMessages(null);
-            _handler.post(_runnable);
+    private suspend fun executeSafely() {
+        try {
+            execute()
+        } catch (e: Exception) {
+            println("TimerUtil:$tag - Error: ${e.message}")
         }
+    }
+
+    fun destroy() {
+        stop()
+        scope.cancel()
     }
 }

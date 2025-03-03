@@ -1,9 +1,9 @@
 package com.github.teranes10.androidutils.ui;
 
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
 import android.media.ToneGenerator;
 import android.view.View;
-import android.view.animation.Animation;
-import android.view.animation.TranslateAnimation;
 
 import com.github.teranes10.androidutils.helpers.Tone;
 
@@ -26,12 +26,14 @@ public class ClickListener {
             return true;
         }
 
-        TranslateAnimation animation = new TranslateAnimation(-50.0f, 0.0f, 0.0f, 0.0f);
-        animation.setDuration(50);
-        animation.setFillAfter(false);
-        animation.setRepeatCount(2);
-        animation.setRepeatMode(Animation.REVERSE);
-        v.startAnimation(animation);
+        ObjectAnimator scaleX = ObjectAnimator.ofFloat(v, "scaleX", 1f, 0.9f, 1f);
+        ObjectAnimator scaleY = ObjectAnimator.ofFloat(v, "scaleY", 1f, 0.9f, 1f);
+        ObjectAnimator translateY = ObjectAnimator.ofFloat(v, "translationY", 0f, 10f, 0f);
+
+        AnimatorSet animatorSet = new AnimatorSet();
+        animatorSet.playTogether(scaleX, scaleY, translateY);
+        animatorSet.setDuration(150);
+        animatorSet.start();
 
         Tone.play(ToneGenerator.TONE_PROP_BEEP, 10);
         return false;
