@@ -44,12 +44,14 @@ abstract class SignalRUtil(
     private val connectionMutex = Mutex()
     private var connectionFuture: Deferred<HubConnection?>? = null
 
+    val isConnected: Boolean get() = isConnected(hubConnection)
+
     enum class ConnectionStatus {
         Disconnected, Connecting, Connected, Reconnecting, NotConnected
     }
 
     interface SignalRStatusListener {
-        fun onSignalRConnectionStatusChanged(status: ConnectionStatus?)
+        fun onSignalRConnectionStatusChanged(status: ConnectionStatus)
     }
 
     private val internetConnectionListener = object : ConnectionUtil.ConnectionListener {
@@ -121,15 +123,27 @@ abstract class SignalRUtil(
         DefaultConnectionUtil.getInstance(context).removeListener(internetConnectionListener)
     }
 
-    protected open fun setTag(): String = javaClass.simpleName
-    protected open fun setToken(): String? = null
     protected abstract fun setUrl(): String?
     protected abstract fun setListeners(connection: HubConnection)
+    protected open fun setTag(): String = javaClass.simpleName
+    protected open fun setToken(): String? = null
+
+    open fun onConnected() {
+        Log.i(TAG, "Connected.")
+        updateStatus(ConnectionStatus.Connected)
+        stopInternetConnectionObserver()
+    }
+
+    open fun onConnectionClosed() {
+        Log.e(TAG, "onConnectionClosed: ")
+        updateStatus(ConnectionStatus.Disconnected)
+        startInternetConnectionObserver()
+    }
 
     suspend fun connect(): HubConnection? {
         connectionFuture?.let { return it.await() }
 
-        if (isConnected()) {
+        if (isConnected) {
             return hubConnection
         }
 
@@ -160,27 +174,13 @@ abstract class SignalRUtil(
         return connectionFuture?.await()
     }
 
-    protected fun onConnected() {
-        Log.i(TAG, "Connected.")
-        updateStatus(ConnectionStatus.Connected)
-        stopInternetConnectionObserver()
-    }
-
-    private fun onConnectionClosed() {
-        Log.e(TAG, "onConnectionClosed: ")
-        updateStatus(ConnectionStatus.Disconnected)
-        startInternetConnectionObserver()
-    }
-
-    fun isConnected(): Boolean = isConnected(hubConnection)
-
     private fun isConnected(connection: HubConnection?): Boolean {
         return connection?.connectionState == HubConnectionState.CONNECTED
     }
 
     suspend fun getConnection(): HubConnection? {
         connectionFuture?.let { return it.await() }
-        return if (isConnected()) hubConnection else null
+        return if (isConnected) hubConnection else null
     }
 
     suspend fun <T : Any> invoke(
@@ -207,7 +207,7 @@ abstract class SignalRUtil(
 
     suspend fun close() {
         withContext(Dispatchers.IO) {
-            if (isConnected()) {
+            if (isConnected) {
                 try {
                     hubConnection?.stop()?.blockingAwait()
                     Log.i(TAG, "Connection closed.")

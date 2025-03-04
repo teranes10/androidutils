@@ -11,14 +11,10 @@ import android.net.TrafficStats
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.os.Build
-import android.telephony.CellIdentity
-import android.telephony.CellIdentityGsm
-import android.telephony.CellIdentityLte
 import android.telephony.CellIdentityNr
 import android.telephony.CellInfoGsm
 import android.telephony.CellInfoLte
 import android.telephony.CellInfoNr
-import android.telephony.CellSignalStrength
 import android.telephony.TelephonyManager
 import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.Dispatchers
@@ -35,13 +31,6 @@ import java.util.Collections
 object NetworkUtil {
     private const val NETWORK_UTIL_CONNECTION_TAG = 123123
     private const val TAG = "NetworkUtil"
-
-    fun isConnected(context: Context): Boolean {
-        val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
-        val network = connectivityManager.activeNetwork ?: return false
-        val networkCapabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
-        return networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-    }
 
     fun getSSID(wifiInfo: WifiInfo): String = wifiInfo.ssid
 
@@ -89,8 +78,11 @@ object NetworkUtil {
         return@withContext ""
     }
 
-    fun getWifiInfo(context: Context): WifiInfo? {
-        val connectivityManager = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    fun getConnectivityManager(context: Context): ConnectivityManager {
+        return context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    }
+
+    fun getWifiInfo(context: Context, connectivityManager: ConnectivityManager): WifiInfo? {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val network = connectivityManager.activeNetwork ?: return null
             val networkCapabilities = connectivityManager.getNetworkCapabilities(network) ?: return null
@@ -101,11 +93,16 @@ object NetworkUtil {
         }
     }
 
-    fun isWifiConnected(context: Context): Boolean {
-        val connectivityManager = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    fun isWifiConnected(connectivityManager: ConnectivityManager): Boolean {
         val network = connectivityManager.activeNetwork ?: return false
         val networkCapabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
         return networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+    }
+
+    fun isConnected(context: Context, connectivityManager: ConnectivityManager): Boolean {
+        val network = connectivityManager.activeNetwork ?: return false
+        val networkCapabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     fun getSignalStrength(wifiInfo: WifiInfo): String = "${wifiInfo.rssi}dB"
