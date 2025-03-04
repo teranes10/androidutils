@@ -1,82 +1,86 @@
-package com.github.teranes10.androidutils.utils.location;
+package com.github.teranes10.androidutils.utils.location
 
-import android.content.Context;
-import android.location.Geocoder;
-import android.util.Log;
+import android.content.Context
+import android.location.Geocoder
+import android.location.Geocoder.GeocodeListener
+import android.os.Build
+import android.util.Log
+import androidx.annotation.RequiresApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import java.util.Locale
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import android.location.Address as AndroidAddress
 
-import androidx.annotation.NonNull;
+class AddressProvider(context: Context) {
+    private val geocoder = Geocoder(context, Locale.getDefault())
 
-import com.github.teranes10.androidutils.utils.Utils;
+    companion object {
+        private const val TAG = "AddressProvider"
+    }
 
-import java.util.List;
-import java.util.Locale;
-import java.util.concurrent.CompletableFuture;
+    suspend fun getAddress(latitude: Double, longitude: Double): Address? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getAddressNewAPI(latitude, longitude)
+        } else {
+            getAddressOldAPI(latitude, longitude)
+        }
+    }
 
-public class AddressProvider {
-    private static final String TAG = "AddressProvider";
-
-    public static CompletableFuture<Address> getAddressAsync(Context context, double latitude, double longitude) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                Geocoder geocoder = new Geocoder(context, Locale.getDefault());
-                List<android.location.Address> addresses = geocoder.getFromLocation(latitude, longitude, 1);
-                if (addresses == null || addresses.isEmpty()) {
-                    return null;
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private suspend fun getAddressNewAPI(latitude: Double, longitude: Double): Address? {
+        return suspendCancellableCoroutine { continuation ->
+            geocoder.getFromLocation(latitude, longitude, 1, object : GeocodeListener {
+                override fun onGeocode(addresses: MutableList<AndroidAddress>) {
+                    val address = addresses.firstOrNull()?.toCustomAddress()
+                    continuation.resume(address)
                 }
 
-                return addresses.stream().map(x -> new Address(
-                        Utils.getOrDefault(x.getAddressLine(x.getMaxAddressLineIndex())),
-                        Utils.getOrDefault(x.getFeatureName()),
-                        Utils.getOrDefault(x.getThoroughfare()),
-                        Utils.getOrDefault(x.getSubAdminArea()),
-                        Utils.getOrDefault(x.getLocality()),
-                        Utils.getOrDefault(x.getAdminArea()),
-                        Utils.getOrDefault(x.getCountryName()),
-                        Utils.getOrDefault(x.getCountryCode()),
-                        Utils.getOrDefault(x.getPostalCode())
-                )).findFirst().orElse(null);
-            } catch (Exception e) {
-                Log.e(TAG, "getAddress: " + e.getLocalizedMessage());
-                return null;
+                override fun onError(errorMessage: String?) {
+                    Log.e(TAG, "Geocoder error: $errorMessage")
+                    continuation.resumeWithException(Exception(errorMessage ?: "Unknown error"))
+                }
+            })
+        }
+    }
+
+    private suspend fun getAddressOldAPI(latitude: Double, longitude: Double): Address? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val addresses = geocoder.getFromLocation(latitude, longitude, 1)
+                addresses?.firstOrNull()?.toCustomAddress()
+            } catch (e: Exception) {
+                Log.e(TAG, "Geocoder error: ${e.localizedMessage}")
+                null
             }
-        });
-    }
-
-    public static class Address {
-        public String addressLine;
-        public String streetNo;
-        public String streetName;
-        public String city;
-        public String suburb;
-        public String state;
-        public String country;
-        public String countryCode;
-        public String postCode;
-
-        public Address(String addressLine, String streetNo, String streetName, String city, String suburb, String state, String country, String countryCode, String postCode) {
-            this.addressLine = addressLine;
-            this.streetNo = streetNo;
-            this.streetName = streetName;
-            this.city = city;
-            this.suburb = suburb;
-            this.state = state;
-            this.country = country;
-            this.countryCode = countryCode;
-            this.postCode = postCode;
-        }
-
-        @NonNull
-        @Override
-        public String toString() {
-            return "Address{" +
-                    "streetLine='" + addressLine + '\'' +
-                    ", streetNo='" + streetNo + '\'' +
-                    ", streetName='" + streetName + '\'' +
-                    ", suburb='" + suburb + '\'' +
-                    ", state='" + state + '\'' +
-                    ", country='" + country + '\'' +
-                    ", postCode='" + postCode + '\'' +
-                    '}';
         }
     }
+
+    private fun AndroidAddress.toCustomAddress(): Address {
+        return Address(
+            addressLine = getAddressLine(maxAddressLineIndex) ?: "",
+            streetNo = featureName ?: "",
+            streetName = thoroughfare ?: "",
+            city = subAdminArea ?: "",
+            suburb = locality ?: "",
+            state = adminArea ?: "",
+            country = countryName ?: "",
+            countryCode = countryCode ?: "",
+            postCode = postalCode ?: ""
+        )
+    }
+
+    data class Address(
+        val addressLine: String,
+        val streetNo: String,
+        val streetName: String,
+        val city: String,
+        val suburb: String,
+        val state: String,
+        val country: String,
+        val countryCode: String,
+        val postCode: String
+    )
 }

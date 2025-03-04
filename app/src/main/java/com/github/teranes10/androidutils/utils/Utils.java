@@ -16,7 +16,6 @@ import java.time.ZoneId;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -167,16 +166,6 @@ public class Utils {
         LocalDateTime toTime = toLocalDateTime(to.getTime());
 
         return Duration.between(fromTime, toTime).getSeconds();
-    }
-
-    public static CompletableFuture<Void> Delay(long millis) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                Thread.sleep(millis);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        });
     }
 
     public static class CompositeKey {

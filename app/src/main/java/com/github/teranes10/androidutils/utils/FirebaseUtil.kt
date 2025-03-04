@@ -1,52 +1,28 @@
-package com.github.teranes10.androidutils.utils;
+package com.github.teranes10.androidutils.utils
 
-import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QuerySnapshot;
+import android.util.Log
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
+object FirebaseUtil {
 
-public class FirebaseUtil {
-
-    public static <T> CompletableFuture<List<T>> getAllDocs(String collectionName, Class<T> clazz) {
-        CompletableFuture<List<T>> future = new CompletableFuture<>();
-
-        FirebaseFirestore.getInstance().collection(collectionName).get()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        QuerySnapshot querySnapshot = task.getResult();
-                        if (querySnapshot != null && !querySnapshot.isEmpty()) {
-                            future.complete(querySnapshot.toObjects(clazz));
-                        } else {
-                            future.complete(new ArrayList<>());
-                        }
-                    } else {
-                        future.completeExceptionally(task.getException());
-                    }
-                });
-
-        return future;
+    suspend fun <T : Any> getAllDocs(collectionName: String, clazz: Class<T>): List<T> {
+        return try {
+            val snapshot = FirebaseFirestore.getInstance().collection(collectionName).get().await()
+            snapshot.toObjects(clazz)
+        } catch (e: Exception) {
+            Log.e("FirebaseUtil", "Error getting documents: ${e.localizedMessage}")
+            emptyList()
+        }
     }
 
-    public static <T> CompletableFuture<T> getDocById(String collectionName, String docId, Class<T> clazz) {
-        CompletableFuture<T> future = new CompletableFuture<>();
-
-        FirebaseFirestore.getInstance().collection(collectionName).document(docId).get()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        DocumentSnapshot document = task.getResult();
-                        if (document != null && document.exists()) {
-                            future.complete(document.toObject(clazz));
-                        } else {
-                            future.complete(null);
-                        }
-                    } else {
-                        future.completeExceptionally(task.getException());
-                    }
-                });
-
-        return future;
+    suspend fun <T : Any> getDocById(collectionName: String, docId: String, clazz: Class<T>): T? {
+        return try {
+            val document = FirebaseFirestore.getInstance().collection(collectionName).document(docId).get().await()
+            document.toObject(clazz)
+        } catch (e: Exception) {
+            Log.e("FirebaseUtil", "Error getting document: ${e.localizedMessage}")
+            null
+        }
     }
 }

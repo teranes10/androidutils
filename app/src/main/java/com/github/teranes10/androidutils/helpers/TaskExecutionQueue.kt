@@ -1,71 +1,72 @@
-package com.github.teranes10.androidutils.helpers;
+package com.github.teranes10.androidutils.helpers
 
-import android.content.Context;
-import android.util.Log;
+import android.content.Context
+import android.util.Log
+import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.util.*
+import java.util.concurrent.atomic.AtomicBoolean
 
-import java.util.LinkedList;
-import java.util.Queue;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Supplier;
-
-public class TaskExecutionQueue {
-    private static final String TAG = "TaskExecutionQueueService";
-    private final Context _ctx;
-    private final Supplier<Boolean> _canExecuteTask;
-    private final Queue<Task> _tasks = new LinkedList<>();
-
-    public TaskExecutionQueue(Context ctx) {
-        this(ctx, null);
+class TaskExecutionQueue(
+    private val context: Context,
+    private val canExecuteTask: (() -> Boolean)? = null
+) {
+    companion object {
+        private const val TAG = "TaskExecutionQueueService"
     }
 
-    public TaskExecutionQueue(Context ctx, Supplier<Boolean> canExecuteTask) {
-        this._ctx = ctx;
-        this._canExecuteTask = canExecuteTask;
-    }
+    private val tasks: Queue<Task> = ArrayDeque()
+    private val mutex = Mutex()
+    private val isExecuting = AtomicBoolean(false)
 
-    public void add(Task task) {
-        CompletableFuture.runAsync(() -> {
-            if (task == null) {
-                return;
-            }
+    fun add(task: Task?) {
+        if (task == null) return
 
-            if (execute(task)) {
-                return;
-            }
+        CoroutineScope(Dispatchers.IO).launch {
+            if (execute(task)) return@launch
 
-            _tasks.add(task);
-            Log.i(TAG, "addNewTask: added.");
-        });
-    }
-
-    public void execute() {
-        int size = _tasks.size();
-        Log.i(TAG, "executeTasks: " + size);
-        if (size > 0) {
-            for (int i = 0; i < size; i++) {
-                Task task = _tasks.remove();
-                execute(task);
+            mutex.withLock {
+                tasks.add(task)
+                Log.i(TAG, "addNewTask: added.")
             }
         }
     }
 
-    private boolean execute(Task task) {
-        boolean canExecute = _canExecuteTask == null || _canExecuteTask.get();
-        if (canExecute) {
+    fun execute() {
+        if (isExecuting.getAndSet(true)) return
+
+        CoroutineScope(Dispatchers.IO).launch {
+            mutex.withLock {
+                Log.i(TAG, "executeTasks: ${tasks.size}")
+
+                while (tasks.isNotEmpty()) {
+                    val task = tasks.remove()
+                    execute(task)
+                }
+            }
+            isExecuting.set(false)
+        }
+    }
+
+    private fun execute(task: Task): Boolean {
+        val canExecute = canExecuteTask?.invoke() ?: true
+
+        return if (canExecute) {
             try {
-                task.execute(_ctx);
-                Log.i(TAG, "addNewTask: executed.");
-            } catch (Exception e) {
-                Log.e(TAG, "addNewTask: ", e);
+                task.execute(context)
+                Log.i(TAG, "addNewTask: executed.")
+                true
+            } catch (e: Exception) {
+                Log.e(TAG, "addNewTask: ", e)
+                false
             }
-
-            return true;
+        } else {
+            false
         }
-
-        return false;
     }
 
-    public interface Task {
-        void execute(Context context);
+    fun interface Task {
+        fun execute(context: Context)
     }
 }

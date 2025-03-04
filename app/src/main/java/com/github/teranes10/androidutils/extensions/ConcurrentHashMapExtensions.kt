@@ -2,7 +2,7 @@ package com.github.teranes10.androidutils.extensions
 
 import java.util.concurrent.ConcurrentHashMap
 
-object ConcurrentHashMap {
+object ConcurrentHashMapExtensions {
 
     fun <K, V> ConcurrentHashMap<K, V>.nextBatch(batchSize: Int): List<V> {
         val batch = mutableListOf<V>()
