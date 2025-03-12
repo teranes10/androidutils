@@ -27,8 +27,8 @@ abstract class TimerUtil(
             }
 
             while (isActive) {
-                executeSafely()
                 delay(interval)
+                executeSafely()
             }
         }
     }

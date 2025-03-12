@@ -1,6 +1,5 @@
 package com.github.teranes10.androidutils.utils
 
-import android.content.Context
 import android.os.SystemClock
 import android.util.Log
 import com.github.teranes10.androidutils.extensions.RxJavaExtensions.await
@@ -16,6 +15,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -23,8 +25,6 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
 
 abstract class SignalRUtil(
-    private val context: Context,
-    private val listener: SignalRStatusListener? = null,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 ) {
 
@@ -36,6 +36,16 @@ abstract class SignalRUtil(
         private const val RESET_CONNECTION_RETRY_IN = 5 * 60 * 1000L
     }
 
+    sealed class ConnectionStatus(val message: String) {
+        data object Disconnected : ConnectionStatus("Not connected")
+        data object Connecting : ConnectionStatus("Attempting to connect")
+        data object Connected : ConnectionStatus("Connected successfully")
+        data object Reconnecting : ConnectionStatus("Reconnecting...")
+    }
+
+    protected val _events = MutableStateFlow<ConnectionStatus>(ConnectionStatus.Disconnected)
+    val events = _events.asStateFlow()
+
     private var hubConnection: HubConnection? = null
     private var lastReconnectedAt = 0L
     private var currentConnectionTry = 0
@@ -46,28 +56,12 @@ abstract class SignalRUtil(
 
     val isConnected: Boolean get() = isConnected(hubConnection)
 
-    enum class ConnectionStatus {
-        Disconnected, Connecting, Connected, Reconnecting, NotConnected
-    }
-
-    interface SignalRStatusListener {
-        fun onSignalRConnectionStatusChanged(status: ConnectionStatus)
-    }
-
-    private val internetConnectionListener = object : ConnectionUtil.ConnectionListener {
-        override fun onInternetAvailabilityChanged(isAvailable: Boolean) {
-            if (isAvailable) {
-                if (!isConnecting.get()) {
-                    scope.launch { connect() }
-                }
-            } else {
-                updateStatus(ConnectionStatus.NotConnected)
-            }
-        }
+    private fun isConnected(connection: HubConnection?): Boolean {
+        return connection?.connectionState == HubConnectionState.CONNECTED
     }
 
     private fun updateStatus(status: ConnectionStatus) {
-        listener?.onSignalRConnectionStatusChanged(status)
+        _events.update { status }
     }
 
     private fun createConnection(): HubConnection? {
@@ -84,10 +78,11 @@ abstract class SignalRUtil(
             keepAliveInterval = KEEP_ALIVE_INTERVAL
             setListeners(this)
             onClosed {
-                Log.e(TAG, "onClosed: ${setTag()}: ${it.localizedMessage}")
-                onConnectionClosed()
-                updateStatus(ConnectionStatus.Reconnecting)
-                scope.launch { reconnect() }
+                Log.e(TAG, "onClosed (start reconnection): ${setTag()}: ${it.localizedMessage}")
+                scope.launch {
+                    updateStatus(ConnectionStatus.Reconnecting)
+                    reconnect()
+                }
             }
         }
     }
@@ -101,9 +96,9 @@ abstract class SignalRUtil(
 
             if (currentConnectionTry < CONNECTION_RETRIES.size) {
                 lastReconnectedAt = SystemClock.elapsedRealtime()
-                delay(CONNECTION_RETRIES[currentConnectionTry])
 
                 if (!isConnecting.get()) {
+                    delay(CONNECTION_RETRIES[currentConnectionTry])
                     connect()
                 }
 
@@ -115,14 +110,6 @@ abstract class SignalRUtil(
         }
     }
 
-    private fun startInternetConnectionObserver() {
-        DefaultConnectionUtil.getInstance(context).addListener(internetConnectionListener)
-    }
-
-    private fun stopInternetConnectionObserver() {
-        DefaultConnectionUtil.getInstance(context).removeListener(internetConnectionListener)
-    }
-
     protected abstract fun setUrl(): String?
     protected abstract fun setListeners(connection: HubConnection)
     protected open fun setTag(): String = javaClass.simpleName
@@ -131,51 +118,49 @@ abstract class SignalRUtil(
     open fun onConnected() {
         Log.i(TAG, "Connected.")
         updateStatus(ConnectionStatus.Connected)
-        stopInternetConnectionObserver()
     }
 
     open fun onConnectionClosed() {
         Log.e(TAG, "onConnectionClosed: ")
         updateStatus(ConnectionStatus.Disconnected)
-        startInternetConnectionObserver()
     }
 
     suspend fun connect(): HubConnection? {
-        connectionFuture?.let { return it.await() }
+        return connectionMutex.withLock {
+            if (connectionFuture != null) {
+                return@withLock connectionFuture?.await()
+            }
 
-        if (isConnected) {
-            return hubConnection
-        }
+            if (isConnected) {
+                return@withLock hubConnection
+            }
 
-        updateStatus(ConnectionStatus.Connecting)
-        isConnecting.set(true)
+            updateStatus(ConnectionStatus.Connecting)
+            isConnecting.set(true)
 
-        connectionFuture = coroutineScope {
-            async(Dispatchers.IO) {
-                try {
-                    if (hubConnection == null) {
-                        hubConnection = createConnection()
+            connectionFuture = coroutineScope {
+                async(Dispatchers.IO) {
+                    try {
+                        if (hubConnection == null) {
+                            hubConnection = createConnection()
+                        }
+
+                        hubConnection?.start()?.await()
+                        onConnected()
+                        hubConnection
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Connection error: ${e.localizedMessage}", e)
+                        onConnectionClosed()
+                        null
+                    } finally {
+                        isConnecting.set(false)
+                        connectionFuture = null
                     }
-
-                    hubConnection?.start()?.await()
-                    onConnected()
-                    hubConnection
-                } catch (e: Exception) {
-                    Log.e(TAG, "Connection error: ${e.localizedMessage}", e)
-                    onConnectionClosed()
-                    null
-                } finally {
-                    isConnecting.set(false)
-                    connectionFuture = null
                 }
             }
+
+            return@withLock connectionFuture?.await()
         }
-
-        return connectionFuture?.await()
-    }
-
-    private fun isConnected(connection: HubConnection?): Boolean {
-        return connection?.connectionState == HubConnectionState.CONNECTED
     }
 
     suspend fun getConnection(): HubConnection? {
