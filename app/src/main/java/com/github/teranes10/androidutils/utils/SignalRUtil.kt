@@ -24,9 +24,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
 
-abstract class SignalRUtil(
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-) {
+abstract class SignalRUtil(protected val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())) {
 
     companion object {
         private const val TAG = "SignalR"
@@ -36,7 +34,7 @@ abstract class SignalRUtil(
         private const val RESET_CONNECTION_RETRY_IN = 5 * 60 * 1000L
     }
 
-    sealed class ConnectionStatus(val message: String) {
+    open class ConnectionStatus(val message: String) {
         data object Disconnected : ConnectionStatus("Not connected")
         data object Connecting : ConnectionStatus("Attempting to connect")
         data object Connected : ConnectionStatus("Connected successfully")
@@ -172,33 +170,31 @@ abstract class SignalRUtil(
         returnType: Class<T>,
         method: String,
         vararg args: Any
-    ): T? {
+    ): T? = withContext(Dispatchers.IO) {
         try {
             val connection = getConnection()
             if (connection == null) {
                 Log.e(TAG, "$method: No connection.")
-                return null
+                return@withContext null
             }
 
             Log.i(TAG, "$method: ${args.joinToString(", ")}")
             val res = connection.invokeSuspend(returnType, method, *args)
             Log.i(TAG, "$method: ${args.joinToString(", ")} :: $res")
-            return res
+            return@withContext res
         } catch (e: Exception) {
             Log.e(TAG, "$method: ", e)
-            return null
+            return@withContext null
         }
     }
 
-    suspend fun close() {
-        withContext(Dispatchers.IO) {
-            if (isConnected) {
-                try {
-                    hubConnection?.stop()?.blockingAwait()
-                    Log.i(TAG, "Connection closed.")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error closing connection: ${e.localizedMessage}", e)
-                }
+    suspend fun close() = withContext(Dispatchers.IO) {
+        if (isConnected) {
+            try {
+                hubConnection?.stop()?.blockingAwait()
+                Log.i(TAG, "Connection closed.")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error closing connection: ${e.localizedMessage}", e)
             }
         }
     }
