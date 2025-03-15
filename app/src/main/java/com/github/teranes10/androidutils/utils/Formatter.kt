@@ -37,13 +37,37 @@ object Formatter {
         return dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY
     }
 
-    fun Instant.format(pattern: String): String {
-        return this.atZone(UTC_ZONE_ID).format(DateTimeFormatter.ofPattern(pattern))
+    fun parse(str: String): LocalDateTime? {
+        return LocalDateTime.parse(str)
+    }
+
+    fun parse(str: String, format: String): LocalDateTime? {
+        return LocalDateTime.parse(str, DateTimeFormatter.ofPattern(format))
+    }
+
+    fun parseDate(str: String, format: String): LocalDate? {
+        return LocalDate.parse(str, DateTimeFormatter.ofPattern(format))
+    }
+
+    fun parseToInstant(millis: Long): Instant {
+        return Instant.ofEpochMilli(millis)
     }
 
     fun parseToInstant(str: String): Instant {
         val adjustedStr = if (!str.endsWith("Z")) str + "Z" else str
         return Instant.parse(adjustedStr)
+    }
+
+    fun Instant.format(pattern: String): String {
+        return this.atZone(UTC_ZONE_ID).format(DateTimeFormatter.ofPattern(pattern))
+    }
+
+    fun Instant.format(formatter: DateTimeFormatter): String {
+        return this.atZone(UTC_ZONE_ID).format(formatter)
+    }
+
+    fun LocalDateTime.format(pattern: String): String {
+        return this.format(DateTimeFormatter.ofPattern(pattern))
     }
 
     @SuppressLint("DefaultLocale")

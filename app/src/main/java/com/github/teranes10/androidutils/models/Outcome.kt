@@ -11,11 +11,11 @@ data class Outcome<T>(
             return Outcome(success = true, data = data, message = message)
         }
 
-        fun <T> fail(message: String, type: OutcomeType = OutcomeType.Unknown): Outcome<T?> {
+        fun <T> fail(message: String, type: OutcomeType = OutcomeType.Unknown): Outcome<T> {
             return Outcome(success = false, message = message, type = type)
         }
 
-        fun <T> fail(data: T?, message: String, type: OutcomeType = OutcomeType.Unknown): Outcome<T?> {
+        fun <T> fail(data: T?, message: String, type: OutcomeType = OutcomeType.Unknown): Outcome<T> {
             return Outcome(success = false, data = data, message = message, type = type)
         }
     }
