@@ -2,7 +2,7 @@ package com.github.teranes10.androidutils.utils
 
 import android.os.Environment
 import android.util.Log
-import com.github.teranes10.androidutils.models.Result
+import com.github.teranes10.androidutils.models.Outcome
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.commons.net.ftp.*
@@ -12,13 +12,13 @@ import java.io.*
 object FtpUtil {
     private const val TAG = "FtpUtil"
 
-    suspend fun downloadDir(config: FtpDirConfig, toDir: File, listener: FtpDirTransferListener? = null): Result<*> =
+    suspend fun downloadDir(config: FtpDirConfig, toDir: File, listener: FtpDirTransferListener? = null): Outcome<*> =
         withContext(Dispatchers.IO) {
             val ftp = FTPClient()
             try {
                 if (!isExternalStorageWritable()) {
                     Log.e(TAG, "downloadDir: Write access not granted.")
-                    return@withContext Result.fail(false, "Write access not granted.")
+                    return@withContext Outcome.fail(false, "Write access not granted.")
                 }
 
                 ftp.connect(config.server, config.port)
@@ -38,7 +38,7 @@ object FtpUtil {
                 val files = ftp.listFiles(config.dir)
                 if (files.isNullOrEmpty()) {
                     Log.e(TAG, "downloadDir: No Files.")
-                    return@withContext Result.fail(false, "No files.")
+                    return@withContext Outcome.fail(false, "No files.")
                 }
 
                 ftp.changeWorkingDirectory("${config.contentRoot}/${config.dir}")
@@ -71,26 +71,26 @@ object FtpUtil {
 
                 if (downloadedFiles == totalFiles) {
                     Log.i(TAG, "downloadDir: Downloaded successfully.")
-                    return@withContext Result.ok(true, "Downloaded successfully.")
+                    return@withContext Outcome.ok(true, "Downloaded successfully.")
                 }
 
-                Result.fail(false, "Some files failed to download.")
+                Outcome.fail(false, "Some files failed to download.")
             } catch (e: IOException) {
                 Log.e(TAG, "downloadDir: ", e)
-                Result.fail(false, e.localizedMessage)
+                Outcome.fail(false, e.localizedMessage)
             } finally {
                 ftp.logout()
                 ftp.disconnect()
             }
         }
 
-    suspend fun downloadFile(config: FtpFileConfig, localFile: File, listener: FtpFileTransferListener? = null): Result<*> =
+    suspend fun downloadFile(config: FtpFileConfig, localFile: File, listener: FtpFileTransferListener? = null): Outcome<*> =
         withContext(Dispatchers.IO) {
             val ftp = FTPClient()
             try {
                 if (!isExternalStorageWritable()) {
                     Log.e(TAG, "downloadFile: Write access not granted.")
-                    return@withContext Result.fail(false, "Write access not granted.")
+                    return@withContext Outcome.fail(false, "Write access not granted.")
                 }
 
                 ftp.connect(config.server, config.port)
@@ -109,7 +109,7 @@ object FtpUtil {
                 val files = ftp.listFiles(config.fileName)
                 if (files.isNullOrEmpty()) {
                     Log.e(TAG, "downloadFile: File not found.")
-                    return@withContext Result.fail(false, "File not found.")
+                    return@withContext Outcome.fail(false, "File not found.")
                 }
 
                 val fileSize = files[0].size
@@ -124,14 +124,14 @@ object FtpUtil {
                 BufferedOutputStream(FileOutputStream(localFile)).use { outputStream ->
                     if (ftp.retrieveFile(config.fileName, outputStream)) {
                         Log.i(TAG, "downloadFile: Downloaded successfully.")
-                        return@withContext Result.ok(true, "Downloaded successfully.")
+                        return@withContext Outcome.ok(true, "Downloaded successfully.")
                     }
                 }
 
-                Result.fail(false, "Download failed.")
+                Outcome.fail(false, "Download failed.")
             } catch (e: IOException) {
                 Log.e(TAG, "downloadFile: ", e)
-                Result.fail(false, e.localizedMessage)
+                Outcome.fail(false, e.localizedMessage)
             } finally {
                 ftp.logout()
                 ftp.disconnect()

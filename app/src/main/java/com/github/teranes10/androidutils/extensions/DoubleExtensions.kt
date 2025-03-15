@@ -3,7 +3,7 @@ package com.github.teranes10.androidutils.extensions
 import java.text.NumberFormat
 import java.util.Locale
 
-class DoubleExtensions {
+object DoubleExtensions {
 
     fun Double.toCurrency(
         language: String = "en",

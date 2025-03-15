@@ -1,8 +1,7 @@
-package com.example.mytaxy.converters
+package com.github.teranes10.androidutils.converters
 
 import androidx.room.TypeConverter
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 class LocalDateConverter {
     @TypeConverter

@@ -1,5 +1,6 @@
 package com.github.teranes10.androidutils.utils
 
+import android.os.SystemClock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -8,6 +9,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicLong
 
 abstract class TimerUtil(
     private var interval: Long,
@@ -15,20 +17,23 @@ abstract class TimerUtil(
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 ) {
     private var job: Job? = null
+    private val lastExecutionTime = AtomicLong(0L)
 
     abstract suspend fun execute()
 
     fun start(immediate: Boolean = false) {
-        if (job?.isActive == true) return
+        if (job?.isActive == true || interval <= 0) return
 
         job = scope.launch {
-            if(immediate) {
+            if (immediate) {
                 executeSafely()
+                lastExecutionTime.set(SystemClock.elapsedRealtime())
             }
 
             while (isActive) {
                 delay(interval)
                 executeSafely()
+                lastExecutionTime.set(SystemClock.elapsedRealtime())
             }
         }
     }
@@ -44,9 +49,19 @@ abstract class TimerUtil(
     }
 
     fun updateInterval(newInterval: Long) {
-        if (interval != newInterval) {
-            interval = newInterval
-            restart()
+        if (newInterval <= 0 || interval == newInterval) return
+
+        interval = newInterval
+
+        val elapsed = SystemClock.elapsedRealtime() - lastExecutionTime.get()
+        val remaining = (newInterval - elapsed).coerceAtLeast(0)
+
+        if (job?.isActive == true) {
+            job?.cancel()
+            job = scope.launch {
+                delay(remaining)
+                start(immediate = true)
+            }
         }
     }
 
