@@ -45,8 +45,16 @@ object Formatter {
         return LocalDateTime.parse(str, DateTimeFormatter.ofPattern(format))
     }
 
+    fun parse(str: String, format: DateTimeFormatter): LocalDateTime? {
+        return LocalDateTime.parse(str, format)
+    }
+
     fun parseDate(str: String, format: String): LocalDate? {
         return LocalDate.parse(str, DateTimeFormatter.ofPattern(format))
+    }
+
+    fun parseDate(str: String, format: DateTimeFormatter): LocalDate? {
+        return LocalDate.parse(str, format)
     }
 
     fun parseToInstant(millis: Long): Instant {
