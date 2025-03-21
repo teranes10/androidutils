@@ -17,9 +17,7 @@ import android.os.HandlerThread
 import android.os.SystemClock
 import androidx.core.app.ActivityCompat
 import com.github.teranes10.androidutils.models.Outcome
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -29,14 +27,14 @@ abstract class LocationProvider(private val context: Context) {
     private val accelerometer: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
 
     private var minIntervalMillis: Long = 0
+
     private var enableSatellitesInfo: Boolean = false
+    private var satelliteListener: ISatelliteListener? = null
+    val satellitesInfo: AtomicReference<GnssStatus?> = AtomicReference(null)
+
     private var enableAccelerometerInfo: Boolean = false
-
-    private val _satellitesFlow = MutableSharedFlow<GnssStatus>(replay = 1, extraBufferCapacity = 1, BufferOverflow.DROP_OLDEST)
-    val satellitesFlow = _satellitesFlow.asSharedFlow()
-
-    private val _movementsFlow = MutableSharedFlow<MovementValues>(replay = 1, extraBufferCapacity = 1, BufferOverflow.DROP_OLDEST)
-    val movementsFlow = _movementsFlow.asSharedFlow()
+    private var movementListener: IMovementListener? = null
+    val movementsInfo: AtomicReference<MovementValues?> = AtomicReference(null)
 
     private var lastSatellitesUpdate: Long = 0
     private val satelliteStatusCallback = object : GnssStatus.Callback() {
@@ -45,7 +43,8 @@ abstract class LocationProvider(private val context: Context) {
             val now = SystemClock.elapsedRealtime()
             if (minIntervalMillis > 0 && now - lastSatellitesUpdate >= minIntervalMillis) {
                 lastSatellitesUpdate = now
-                _satellitesFlow.tryEmit(status)
+                satellitesInfo.set(status)
+                satelliteListener?.onStatusChanged(status)
             }
         }
     }
@@ -58,7 +57,8 @@ abstract class LocationProvider(private val context: Context) {
             if (minIntervalMillis > 0 && now - lastSensorUpdate >= minIntervalMillis) {
                 lastSensorUpdate = now
                 val values = MovementValues(event.values[0], event.values[1], event.values[2])
-                _movementsFlow.tryEmit(values)
+                movementsInfo.set(values)
+                movementListener?.onMovementChanged(values)
             }
         }
     }
@@ -69,12 +69,14 @@ abstract class LocationProvider(private val context: Context) {
     val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
     val activeProviders get() = providers.filter { locationManager.isProviderEnabled(it) }
 
-    fun setEnableSatellitesInfo(enable: Boolean) {
+    fun setEnableSatellitesInfo(enable: Boolean, listener: ISatelliteListener? = null) {
         enableSatellitesInfo = enable
+        satelliteListener = listener
     }
 
-    fun setEnableAccelerometer(enable: Boolean) {
+    fun setEnableAccelerometer(enable: Boolean, listener: IMovementListener? = null) {
         enableAccelerometerInfo = enable
+        movementListener = listener
     }
 
     fun hasPermissions(): Outcome<*> {
