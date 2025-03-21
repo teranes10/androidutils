@@ -6,6 +6,10 @@ data class Outcome<T>(
     val message: String = "",
     val type: OutcomeType = OutcomeType.Unknown
 ) {
+
+    val isSuccess get() = success
+    val isFailure get() = !success
+
     companion object {
         fun <T> ok(data: T, message: String = ""): Outcome<T> {
             return Outcome(success = true, data = data, message = message)

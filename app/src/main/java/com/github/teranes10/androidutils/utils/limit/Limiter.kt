@@ -37,6 +37,12 @@ class Limiter<T : Any?>(
         }
     }
 
+    fun forceTrigger(value: T? = null) {
+        latestValue = value ?: latestValue
+        job?.cancel()
+        emitValue()
+    }
+
     private fun emitValue() {
         onUpdate(latestValue)
         lastEmittedTime.set(SystemClock.elapsedRealtime())
@@ -47,3 +53,4 @@ class Limiter<T : Any?>(
         scope.cancel()
     }
 }
+
