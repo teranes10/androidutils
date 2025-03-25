@@ -24,11 +24,11 @@ data class Outcome<T>(
         }
     }
 
-    enum class OutcomeType {
-        InvalidInput,
-        Unauthorized,
-        NotFound,
-        Unknown,
-        NoInternetConnection
+    open class OutcomeType(val message: String) {
+        data object Unknown : OutcomeType("Unknown")
+        data object InvalidInput : OutcomeType("Invalid Input")
+        data object Unauthorized : OutcomeType("Unauthorized")
+        data object NotFound : OutcomeType("Not found")
+        data object NoInternet : OutcomeType("No Internet")
     }
 }

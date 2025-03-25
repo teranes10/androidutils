@@ -77,7 +77,7 @@ object FtpUtil {
                 Outcome.fail(false, "Some files failed to download.")
             } catch (e: IOException) {
                 Log.e(TAG, "downloadDir: ", e)
-                Outcome.fail(false, e.localizedMessage)
+                Outcome.fail(false, e.localizedMessage ?: e.message ?: "Something went wrong.")
             } finally {
                 ftp.logout()
                 ftp.disconnect()
@@ -131,7 +131,7 @@ object FtpUtil {
                 Outcome.fail(false, "Download failed.")
             } catch (e: IOException) {
                 Log.e(TAG, "downloadFile: ", e)
-                Outcome.fail(false, e.localizedMessage)
+                Outcome.fail(false, e.localizedMessage ?: e.message ?: "Something went wrong.")
             } finally {
                 ftp.logout()
                 ftp.disconnect()
