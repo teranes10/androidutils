@@ -29,6 +29,7 @@ data class Outcome<T>(
         data object InvalidInput : OutcomeType("Invalid Input")
         data object Unauthorized : OutcomeType("Unauthorized")
         data object NotFound : OutcomeType("Not found")
+        data object ServerError : OutcomeType("Server error.")
         data object NoInternet : OutcomeType("No Internet")
     }
 }

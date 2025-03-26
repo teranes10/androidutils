@@ -4,6 +4,8 @@ import android.app.Activity
 import android.app.Dialog
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.view.View
+import android.widget.LinearLayout.LayoutParams
 import android.widget.TextView
 import com.github.teranes10.androidutils.R
 
@@ -22,7 +24,20 @@ class Loading(private val context: Activity, private val fullScreen: Boolean = f
             return
         }
 
-        textView.text = message ?: ""
+        if (!message.isNullOrBlank()) {
+            textView.text = message
+            textView.visibility = View.VISIBLE
+
+            val screenWidth = context.resources.configuration.smallestScreenWidthDp
+            textView.textSize = when {
+                screenWidth > 720 -> 16.0f
+                screenWidth > 600 -> 14.0f
+                else -> 12.0f
+            }
+        } else {
+            textView.visibility = View.GONE
+        }
+
         dialog.show()
     }
 

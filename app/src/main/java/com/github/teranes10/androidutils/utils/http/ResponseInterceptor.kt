@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets
 
 object ResponseInterceptor {
 
-    fun interceptor(): Interceptor {
+    fun interceptor(customResponseHandler: ((responseCode: Int, responseBody: String) -> Pair<String, OutcomeType>?)? = null): Interceptor {
         return Interceptor { chain: Interceptor.Chain ->
             val request = chain.request()
             try {
@@ -23,44 +23,51 @@ object ResponseInterceptor {
                 }
 
                 val responseBodyString = response.body?.string().orEmpty()
+                val customResponse = customResponseHandler?.invoke(response.code, responseBodyString)
 
-                return@Interceptor when (response.code) {
-                    400 -> createErrorResponse(request, "Invalid input. $responseBodyString", OutcomeType.InvalidInput)
-                    401 -> createErrorResponse(request, "Token expired. Please re login. $responseBodyString", OutcomeType.Unauthorized)
-                    404 -> createErrorResponse(request, "Not found. $responseBodyString", OutcomeType.NotFound)
-                    else -> createErrorResponse(
-                        request, "Something went wrong. Error code: ${response.code}. $responseBodyString", OutcomeType.Unknown
+                val (message, type) = customResponse
+                    ?: when (response.code) {
+                        400 -> "Invalid input. $responseBodyString" to OutcomeType.InvalidInput
+                        401 -> "Token expired. Please re-login. $responseBodyString" to OutcomeType.Unauthorized
+                        404 -> "Not found. $responseBodyString" to OutcomeType.NotFound
+                        500 -> "Server error. $responseBodyString" to OutcomeType.ServerError
+                        else -> "Something went wrong. Error code: ${response.code}. $responseBodyString" to OutcomeType.Unknown
+                    }
+
+                return@Interceptor createErrorResponse(request, message, type)
+            } catch (e: Exception) {
+                val message = e.localizedMessage ?: e.message ?: ""
+                val customResponse = customResponseHandler?.invoke(-1, message)
+                if (customResponse != null) {
+                    return@Interceptor createErrorResponse(request, customResponse.first, customResponse.second)
+                }
+
+                if (message.contains("Unable to resolve host")
+                    || message.contains("No address associated with hostname")
+                    || message.contains("timeout")
+                ) {
+                    return@Interceptor createErrorResponse(
+                        request,
+                        "No network connection to the server. Please check and retry.",
+                        OutcomeType.NoInternet
                     )
                 }
-            } catch (e: Exception) {
-                return@Interceptor errorHandler(request, e)
+
+                return@Interceptor createErrorResponse(request, "Something went wrong. $message", OutcomeType.Unknown)
             }
         }
-    }
-
-    private fun errorHandler(request: Request, e: Exception): Response {
-        val message = e.localizedMessage ?: e.message ?: ""
-        if (message.contains("Unable to resolve host") || message.contains("No address associated with hostname") || message.contains("timeout")) {
-            return createErrorResponse(
-                request, "No network connection to the server. Please check and retry.", OutcomeType.NoInternet
-            )
-        }
-
-        return createErrorResponse(request, "Something went wrong. $message", OutcomeType.Unknown)
     }
 
     private fun createErrorResponse(request: Request, message: String?, type: OutcomeType): Response {
         val result = fail<Any>(message.orEmpty(), type)
         val stringResult = Gson().toJson(result)
 
-        val responseBuilder = Response.Builder()
-        responseBuilder.request(request)
-        responseBuilder.protocol(Protocol.HTTP_1_1)
-        responseBuilder.code(200)
-        responseBuilder.message(message.orEmpty())
-
-        val mediaType = "application/json".toMediaType()
-        val responseBody = stringResult.toByteArray(StandardCharsets.UTF_8).toResponseBody(mediaType)
-        return responseBuilder.body(responseBody).build()
+        return Response.Builder()
+            .request(request)
+            .protocol(Protocol.HTTP_1_1)
+            .code(200)
+            .message(message.orEmpty())
+            .body(stringResult.toByteArray(StandardCharsets.UTF_8).toResponseBody("application/json".toMediaType()))
+            .build()
     }
 }
