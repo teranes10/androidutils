@@ -11,8 +11,8 @@ data class Outcome<T>(
     val isFailure get() = !success
 
     companion object {
-        fun <T> ok(data: T, message: String = ""): Outcome<T> {
-            return Outcome(success = true, data = data, message = message)
+        fun <T> ok(data: T, message: String = "", type: OutcomeType = OutcomeType.Unknown): Outcome<T> {
+            return Outcome(success = true, data = data, message = message, type = type)
         }
 
         fun <T> fail(message: String, type: OutcomeType = OutcomeType.Unknown): Outcome<T> {
