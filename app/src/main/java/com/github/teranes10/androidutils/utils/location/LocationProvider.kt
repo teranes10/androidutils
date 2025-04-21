@@ -88,8 +88,8 @@ abstract class LocationProvider(private val context: Context) {
             Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
 
-        return if (isSuccess) Outcome(true, "Has location permissions.")
-        else Outcome.fail(false, "No location permission provided.")
+        return if (isSuccess) Outcome.ok(null, "Has location permissions.")
+        else Outcome.fail<Any>("No location permission provided.")
     }
 
     @SuppressLint("MissingPermission")
@@ -97,12 +97,12 @@ abstract class LocationProvider(private val context: Context) {
         this.minIntervalMillis = minIntervalMillis
 
         val permissionResult = hasPermissions()
-        if (permissionResult.isFailure) {
+        if (permissionResult.failure) {
             return permissionResult
         }
 
         if (activeProviders.isEmpty()) {
-            return Outcome.fail(false, "No location providers enabled!")
+            return Outcome.fail<Any>("No location providers enabled!")
         }
 
         if (handlerThread == null || handler == null) {
@@ -147,14 +147,14 @@ abstract class LocationProvider(private val context: Context) {
     @SuppressLint("MissingPermission")
     suspend fun getLastKnownLocation(): Outcome<Location> {
         val permissionResult = hasPermissions()
-        if (permissionResult.isFailure) {
+        if (permissionResult.failure) {
             return Outcome.fail(permissionResult.message)
         }
 
         return suspendCoroutine { continuation ->
             val location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
             if (location == null || (location.latitude == 0.0 && location.longitude == 0.0)) {
-                continuation.resume(Outcome.fail(null, "No location found."))
+                continuation.resume(Outcome.fail("No location found."))
             } else {
                 continuation.resume(Outcome.ok(location, "Success"))
             }

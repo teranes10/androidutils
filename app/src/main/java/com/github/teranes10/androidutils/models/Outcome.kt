@@ -4,24 +4,31 @@ data class Outcome<T>(
     val success: Boolean,
     val data: T? = null,
     val message: String = "",
-    val type: OutcomeType = OutcomeType.Unknown
+    val networkType: NetworkErrorType?,
+    val outcomeType: OutcomeType?,
 ) {
 
-    val isSuccess get() = success
-    val isFailure get() = !success
+    val failure get() = !success
+
+    val type: OutcomeType get() = outcomeType ?: OutcomeType.fromEnum(networkType ?: NetworkErrorType.Unknown)
 
     companion object {
-        fun <T> ok(data: T, message: String = "", type: OutcomeType = OutcomeType.Unknown): Outcome<T> {
-            return Outcome(success = true, data = data, message = message, type = type)
+        fun <T> ok(data: T?, message: String = "", type: OutcomeType? = null, networkType: NetworkErrorType? = null): Outcome<T> {
+            return Outcome(success = true, data = data, message = message, outcomeType = type, networkType = networkType)
         }
 
-        fun <T> fail(message: String, type: OutcomeType = OutcomeType.Unknown): Outcome<T> {
-            return Outcome(success = false, message = message, type = type)
+        fun <T> fail(message: String, type: OutcomeType? = null, networkType: NetworkErrorType? = null, data: T? = null): Outcome<T> {
+            return Outcome(success = false, message = message, outcomeType = type, networkType = networkType, data = data)
         }
+    }
 
-        fun <T> fail(data: T?, message: String, type: OutcomeType = OutcomeType.Unknown): Outcome<T> {
-            return Outcome(success = false, data = data, message = message, type = type)
-        }
+    enum class NetworkErrorType {
+        Unknown,
+        InvalidInput,
+        Unauthorized,
+        NotFound,
+        ServerError,
+        NoInternet
     }
 
     open class OutcomeType(val message: String) {
@@ -31,5 +38,16 @@ data class Outcome<T>(
         data object NotFound : OutcomeType("Not found")
         data object ServerError : OutcomeType("Server error.")
         data object NoInternet : OutcomeType("No Internet")
+
+        companion object {
+            fun fromEnum(type: NetworkErrorType): OutcomeType = when (type) {
+                NetworkErrorType.Unknown -> Unknown
+                NetworkErrorType.InvalidInput -> InvalidInput
+                NetworkErrorType.Unauthorized -> Unauthorized
+                NetworkErrorType.NotFound -> NotFound
+                NetworkErrorType.ServerError -> ServerError
+                NetworkErrorType.NoInternet -> NoInternet
+            }
+        }
     }
 }

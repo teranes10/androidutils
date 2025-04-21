@@ -21,7 +21,7 @@ class FusedLocationProvider(context: Context, private val listener: ILocationLis
     @SuppressLint("MissingPermission")
     override fun startUpdates(intervalMillis: Long, minIntervalMillis: Long, minDistance: Float): Outcome<*> {
         val result = super.startUpdates(intervalMillis, minIntervalMillis, minDistance)
-        if (result.isFailure) {
+        if (result.failure) {
             return result
         }
 
