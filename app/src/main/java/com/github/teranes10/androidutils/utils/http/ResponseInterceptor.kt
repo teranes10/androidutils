@@ -1,7 +1,6 @@
 package com.github.teranes10.androidutils.utils.http
 
 import com.github.teranes10.androidutils.models.Outcome
-import com.github.teranes10.androidutils.models.Outcome.Companion.fail
 import com.google.gson.Gson
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
@@ -52,7 +51,7 @@ object ResponseInterceptor {
     }
 
     private fun createErrorResponse(request: Request, message: String?, type: Outcome.NetworkErrorType): Response {
-        val result = fail<Any>(message.orEmpty(), networkType = type)
+        val result = Outcome.error(message.orEmpty(), networkType = type)
         val stringResult = Gson().toJson(result)
 
         return Response.Builder()

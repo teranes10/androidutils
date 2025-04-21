@@ -89,7 +89,7 @@ abstract class LocationProvider(private val context: Context) {
         ) == PackageManager.PERMISSION_GRANTED
 
         return if (isSuccess) Outcome.ok(null, "Has location permissions.")
-        else Outcome.fail<Any>("No location permission provided.")
+        else Outcome.error("No location permission provided.")
     }
 
     @SuppressLint("MissingPermission")
@@ -102,7 +102,7 @@ abstract class LocationProvider(private val context: Context) {
         }
 
         if (activeProviders.isEmpty()) {
-            return Outcome.fail<Any>("No location providers enabled!")
+            return Outcome.error("No location providers enabled!")
         }
 
         if (handlerThread == null || handler == null) {

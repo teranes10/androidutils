@@ -20,6 +20,10 @@ data class Outcome<T>(
         fun <T> fail(message: String, type: OutcomeType? = null, networkType: NetworkErrorType? = null, data: T? = null): Outcome<T> {
             return Outcome(success = false, message = message, outcomeType = type, networkType = networkType, data = data)
         }
+
+        fun error(message: String, type: OutcomeType? = null, networkType: NetworkErrorType? = null): Outcome<*> {
+            return Outcome<Any>(success = false, message = message, outcomeType = type, networkType = networkType)
+        }
     }
 
     enum class NetworkErrorType {
