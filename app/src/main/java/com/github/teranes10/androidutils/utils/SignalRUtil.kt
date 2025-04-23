@@ -23,14 +23,15 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 abstract class SignalRUtil(protected val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())) {
 
     companion object {
         private const val TAG = "SignalR"
-        private const val SERVER_TIMEOUT = 30_000L
-        private const val KEEP_ALIVE_INTERVAL = 20_000L
-        private val CONNECTION_RETRIES = listOf(0L, 10_000L, 20_000L, 30_000L, 60_000L)
+        private const val SERVER_TIMEOUT = 30000L
+        private const val KEEP_ALIVE_INTERVAL = 20000L
+        private val CONNECTION_RETRIES = listOf(0L, 10000L, 20000L, 30000L, 60000L, 120000L)
         private const val RESET_CONNECTION_RETRY_IN = 5 * 60 * 1000L
     }
 
@@ -48,9 +49,8 @@ abstract class SignalRUtil(protected val scope: CoroutineScope = CoroutineScope(
     private var lastReconnectedAt = 0L
     private var currentConnectionTry = 0
     private val isConnecting = AtomicBoolean(false)
-
+    private val connectionFuture: AtomicReference<Deferred<Unit>?> = AtomicReference(null)
     private val connectionMutex = Mutex()
-    private var connectionFuture: Deferred<HubConnection?>? = null
 
     val isConnected: Boolean get() = isConnected(hubConnection)
 
@@ -67,9 +67,7 @@ abstract class SignalRUtil(protected val scope: CoroutineScope = CoroutineScope(
         if (url.isNullOrEmpty()) return null
 
         val builder = HubConnectionBuilder.create(url)
-        setToken()?.let { token ->
-            builder.withAccessTokenProvider(Single.defer { Single.just(token) })
-        }
+        setToken()?.let { token -> builder.withAccessTokenProvider(Single.defer { Single.just(token) }) }
 
         return builder.build().apply {
             serverTimeout = SERVER_TIMEOUT
@@ -77,34 +75,28 @@ abstract class SignalRUtil(protected val scope: CoroutineScope = CoroutineScope(
             setListeners(this)
             onClosed {
                 Log.e(TAG, "onClosed (start reconnection): ${setTag()}: ${it.localizedMessage}")
-                scope.launch {
-                    updateStatus(ConnectionStatus.Reconnecting)
-                    reconnect()
-                }
+                scope.launch { reconnect() }
             }
         }
     }
 
     private suspend fun reconnect() {
-        connectionMutex.withLock {
-            val elapsed = SystemClock.elapsedRealtime() - lastReconnectedAt
-            if (elapsed > RESET_CONNECTION_RETRY_IN) {
-                currentConnectionTry = 0
+        val elapsed = SystemClock.elapsedRealtime() - lastReconnectedAt
+        if (elapsed > RESET_CONNECTION_RETRY_IN) {
+            currentConnectionTry = 0
+        }
+
+        if (currentConnectionTry < CONNECTION_RETRIES.size) {
+            lastReconnectedAt = SystemClock.elapsedRealtime()
+
+            if (!isConnecting.get()) {
+                delay(CONNECTION_RETRIES[currentConnectionTry])
+                connect(true, "onReconnect")
             }
 
-            if (currentConnectionTry < CONNECTION_RETRIES.size) {
-                lastReconnectedAt = SystemClock.elapsedRealtime()
-
-                if (!isConnecting.get()) {
-                    delay(CONNECTION_RETRIES[currentConnectionTry])
-                    connect()
-                }
-
-                currentConnectionTry++
-            } else {
-                onConnectionClosed()
-                updateStatus(ConnectionStatus.Disconnected)
-            }
+            currentConnectionTry++
+        } else {
+            onConnectionClosed()
         }
     }
 
@@ -123,47 +115,59 @@ abstract class SignalRUtil(protected val scope: CoroutineScope = CoroutineScope(
         updateStatus(ConnectionStatus.Disconnected)
     }
 
-    suspend fun connect(): HubConnection? {
-        return connectionMutex.withLock {
-            if (connectionFuture != null) {
-                return@withLock connectionFuture?.await()
-            }
+    suspend fun connect(reconnect: Boolean = false, tag: String = "") {
+        Log.i(TAG, "connect: $tag")
 
+        if (isConnected) {
+            Log.i(TAG, "connect: already connected")
+            return
+        }
+
+        if (!connectionMutex.tryLock(SERVER_TIMEOUT)) {
+            Log.e(TAG, "Unable to acquire lock to connect")
+            return
+        }
+
+        try {
             if (isConnected) {
-                return@withLock hubConnection
+                Log.i(TAG, "connect: already connected (inside critical section)")
+                return
             }
 
-            updateStatus(ConnectionStatus.Connecting)
+            Log.i(TAG, "connect: connecting")
             isConnecting.set(true)
+            updateStatus(if (reconnect) ConnectionStatus.Reconnecting else ConnectionStatus.Connecting)
 
-            connectionFuture = coroutineScope {
-                async(Dispatchers.IO) {
-                    try {
-                        if (hubConnection == null) {
-                            hubConnection = createConnection()
-                        }
-
-                        hubConnection?.start()?.await()
-                        onConnected()
-                        hubConnection
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Connection error: ${e.localizedMessage}", e)
-                        onConnectionClosed()
-                        null
-                    } finally {
-                        isConnecting.set(false)
-                        connectionFuture = null
-                    }
-                }
+            if (hubConnection == null) {
+                hubConnection = createConnection()
             }
 
-            return@withLock connectionFuture?.await()
+            try {
+                hubConnection?.start()?.await()
+                onConnected()
+            } catch (e: Exception) {
+                Log.e(TAG, "Connection error: ${e.localizedMessage}", e)
+                onConnectionClosed()
+            } finally {
+                isConnecting.set(false)
+            }
+        } finally {
+            connectionMutex.unlock()
         }
     }
 
     suspend fun getConnection(): HubConnection? {
-        connectionFuture?.let { return it.await() }
-        return if (isConnected) hubConnection else null
+        if (isConnected) {
+            return hubConnection
+        }
+
+        if (isConnecting.get()) {
+            connectionMutex.withLock {
+                return if (isConnected) hubConnection else null
+            }
+        }
+
+        return null
     }
 
     suspend fun <T : Any> invoke(

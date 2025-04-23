@@ -5,10 +5,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
 import java.util.concurrent.atomic.AtomicLong
 
 class Limiter<T : Any?>(
@@ -50,7 +48,5 @@ class Limiter<T : Any?>(
 
     fun cancel() {
         job?.cancel()
-        scope.cancel()
     }
 }
-

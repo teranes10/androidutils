@@ -9,24 +9,32 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 
 class ConnectionUtil(
     context: Context,
-    private val url: String,
-    private val listener: ConnectionListener,
+    private var url: String = "https://google.com/generate_204",
+    private var internetCheckingInterval: Long = 60000L,
+    private var connectionTimeout: Int = 10000,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 ) {
+
     private val connectivityManager = context.applicationContext.getSystemService(ConnectivityManager::class.java)
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
-    private val isAvailable = AtomicBoolean(false)
-    private var internetCheckingInterval = 60_000L // 1 min
-    private var connectionTimeout = 10_000 // 10 sec
     private var checkJob: Job? = null
 
+    private val _isAvailable = MutableSharedFlow<Boolean>(1, extraBufferCapacity = 1, BufferOverflow.DROP_OLDEST)
+    val isAvailable = _isAvailable.asSharedFlow()
+
+    fun setUrl(url: String) {
+        this.url = url
+    }
 
     fun setInternetCheckingInterval(interval: Int) {
         internetCheckingInterval = interval.toLong()
@@ -53,7 +61,7 @@ class ConnectionUtil(
             }
 
             override fun onLost(network: Network) {
-                updateInternetAvailability(false)
+                _isAvailable.tryEmit(false)
                 stopInternetCheck()
             }
         }
@@ -67,14 +75,7 @@ class ConnectionUtil(
             var delayFactor = 1L
 
             while (isActive) {
-                val isReachable = try {
-                    NetworkUtil.isReachable(url, connectionTimeout)
-                } catch (e: Exception) {
-                    false
-                }
-
-                updateInternetAvailability(isReachable)
-
+                val isReachable = isReachable()
                 delayFactor = if (!isReachable) (delayFactor + 1).coerceAtMost(4) else 1
 
                 val nextDelay = internetCheckingInterval * delayFactor / 4
@@ -87,10 +88,19 @@ class ConnectionUtil(
         checkJob?.cancel()
     }
 
-    fun updateInternetAvailability(available: Boolean) {
-        if (isAvailable.getAndSet(available) != available) {
-            listener.onInternetAvailabilityChanged(available)
+    suspend fun isReachable(): Boolean {
+        val isReachable = try {
+            NetworkUtil.isReachable(url, connectionTimeout)
+        } catch (e: Exception) {
+            false
         }
+
+        val lastValue = _isAvailable.replayCache.firstOrNull()
+        if (lastValue != isReachable) {
+            _isAvailable.tryEmit(isReachable)
+        }
+
+        return isReachable
     }
 
     fun release() {
@@ -98,13 +108,5 @@ class ConnectionUtil(
             connectivityManager.unregisterNetworkCallback(it)
         }
         stopInternetCheck()
-    }
-
-    interface ConnectionListener {
-        fun onInternetAvailabilityChanged(isAvailable: Boolean)
-    }
-
-    companion object {
-        private const val TAG = "ConnectionUtil"
     }
 }

@@ -25,10 +25,6 @@ public class MyApplication extends Application {
         return isFirstBoot;
     }
 
-    public void setupDefaultConnectionUtil(String url, int intervalInMillis) {
-        DefaultConnectionUtil.setup(url, intervalInMillis);
-    }
-
     private static void storeFirstBoot(Context context) {
         SharedPreferences.Editor editor = context.getSharedPreferences("FIRST_BOOT", Context.MODE_PRIVATE).edit();
         editor.putBoolean("isFirstBoot", false);
