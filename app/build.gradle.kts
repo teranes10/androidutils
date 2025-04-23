@@ -84,6 +84,7 @@ dependencies {
 
     //SignalR
     compileOnly("com.microsoft.signalr:signalr:8.0.8")
+    compileOnly("org.slf4j:slf4j-api:2.0.7")
 
     //Location
     compileOnly("com.google.android.gms:play-services-location:21.0.1")
