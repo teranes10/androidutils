@@ -68,31 +68,30 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
 
     // Retrofit
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:5.0.0-alpha.3")
+    compileOnly("com.squareup.retrofit2:retrofit:2.9.0")
+    compileOnly("com.squareup.retrofit2:converter-gson:2.9.0")
+    compileOnly("com.squareup.okhttp3:logging-interceptor:5.0.0-alpha.3")
 
     // WebRTC
-    implementation("com.mesibo.api:webrtc:1.0.5")
+    compileOnly("com.mesibo.api:webrtc:1.0.5")
 
     // Room
-    implementation("androidx.room:room-runtime:2.5.2")
-    annotationProcessor("androidx.room:room-compiler:2.5.2")
+    compileOnly("androidx.room:room-runtime:2.5.2")
+    ksp("androidx.room:room-compiler:2.5.2")
 
     //ftp
-    implementation("commons-net:commons-net:3.10.0")
+    compileOnly("commons-net:commons-net:3.10.0")
 
     //SignalR
-    implementation("com.microsoft.signalr:signalr:8.0.8")
-    implementation("org.slf4j:slf4j-api:2.0.7")
+    compileOnly("com.microsoft.signalr:signalr:8.0.8")
 
     //Location
-    implementation("com.google.android.gms:play-services-location:21.0.1")
-    implementation("com.google.android.gms:play-services-places:17.0.0")
-    implementation("com.google.maps.android:android-maps-utils:3.4.0")
+    compileOnly("com.google.android.gms:play-services-location:21.0.1")
+    compileOnly("com.google.android.gms:play-services-places:17.0.0")
+    compileOnly("com.google.maps.android:android-maps-utils:3.4.0")
 
     //firebase
-    implementation("com.google.firebase:firebase-firestore:24.10.0")
+    compileOnly("com.google.firebase:firebase-firestore:24.10.0")
 
     // Testing dependencies
     testImplementation("junit:junit:4.13.2")
