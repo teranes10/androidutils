@@ -1,165 +1,157 @@
-package com.github.teranes10.androidutils.helpers;
+package com.github.teranes10.androidutils.helpers
 
-import android.app.Notification;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.app.Service;
-import android.content.Context;
-import android.content.Intent;
-import android.content.ServiceConnection;
-import android.os.Binder;
-import android.os.Build;
-import android.os.IBinder;
-import android.util.Log;
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
+import android.content.pm.PackageManager
+import android.os.Binder
+import android.os.Build
+import android.os.IBinder
+import android.os.SystemClock
+import android.util.Log
+import androidx.core.app.NotificationCompat
 
-import androidx.annotation.Nullable;
-import androidx.core.app.NotificationCompat;
+abstract class ForegroundService : Service() {
 
-import com.github.teranes10.androidutils.R;
+    companion object {
+        private const val TAG = "ForegroundService"
+        const val ACTION_START_FOREGROUND_SERVICE = "ACTION_START_FOREGROUND_SERVICE"
+        const val ACTION_STOP_FOREGROUND_SERVICE = "ACTION_STOP_FOREGROUND_SERVICE"
+        private const val CHANNEL_ID = "FOREGROUND_SERVICE_CHANNEL"
+        private const val CHANNEL_NAME = "FOREGROUND_SERVICE"
 
-import java.util.Objects;
+        fun startService(context: Context, service: Class<out ForegroundService>) {
+            val intent = Intent(context, service).apply { action = ACTION_START_FOREGROUND_SERVICE }
+            context.startService(intent)
 
-public abstract class ForegroundService extends Service {
-    private static final String TAG = "ForegroundService";
-    public static final String ACTION_START_FOREGROUND_SERVICE = "ACTION_START_FOREGROUND_SERVICE";
-    public static final String ACTION_STOP_FOREGROUND_SERVICE = "ACTION_STOP_FOREGROUND_SERVICE";
-    private final IBinder binder = new ServiceBinder(this);
-    private Context _ctx;
-    public boolean _serviceRunning = false;
-    private Long _serviceStartedAt;
-
-    protected abstract int getServiceId();
-
-    protected abstract int getServiceType();
-
-    protected abstract void onStartService(Context context);
-
-    protected abstract void onStopService(Context context);
-
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent != null) {
-            switch (Objects.requireNonNull(intent.getAction())) {
-                case ACTION_START_FOREGROUND_SERVICE -> _onStartService();
-                case ACTION_STOP_FOREGROUND_SERVICE -> _onStopService();
+            if (!isServiceDeclared(context, service)) {
+                Log.e(TAG, "startService: service must be declared in the AndroidManifest.xml!")
             }
         }
 
-        return START_STICKY;
-    }
-
-    @Nullable
-    @Override
-    public IBinder onBind(Intent intent) {
-        return binder;
-    }
-
-    private void _onStartService() {
-        Log.i(TAG, "_onStartService: " + getServiceId());
-        if (_serviceRunning) {
-            return;
+        fun stopService(context: Context, service: Class<out ForegroundService>) {
+            val intent = Intent(context, service).apply { action = ACTION_STOP_FOREGROUND_SERVICE }
+            context.startService(intent)
         }
 
-        _ctx = this;
-        _serviceRunning = true;
-        _serviceStartedAt = System.currentTimeMillis();
-        startForegroundService();
-        onStartService(_ctx);
-    }
-
-    private void _onStopService() {
-        Log.i(TAG, "_onStopService: " + getServiceId());
-        if (!_serviceRunning) {
-            return;
+        fun bindService(context: Context, service: Class<out ForegroundService>, connection: ServiceConnection) {
+            val intent = Intent(context, service)
+            context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
         }
 
-        onStopService(_ctx);
-        stopForegroundService();
-
-        _ctx = null;
-        _serviceRunning = false;
-        _serviceStartedAt = null;
-    }
-
-    public Long getServiceElapsedTime() {
-        if (_serviceStartedAt == null) {
-            return 0L;
+        fun unbindService(context: Context, connection: ServiceConnection) {
+            context.unbindService(connection)
         }
 
-        return System.currentTimeMillis() - _serviceStartedAt;
+        private fun createNotificationChannel(context: Context) {
+            val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT)
+            val manager = context.getSystemService(NotificationManager::class.java)
+            manager?.createNotificationChannel(channel)
+        }
+
+        private fun isServiceDeclared(context: Context, serviceClass: Class<out Service>): Boolean {
+            val packageManager = context.packageManager
+            val componentName = ComponentName(context, serviceClass)
+            try {
+                packageManager.getServiceInfo(componentName, PackageManager.GET_META_DATA)
+                return true
+            } catch (e: Exception) {
+                Log.e(TAG, "isServiceDeclared: ", e)
+                return false
+            }
+        }
     }
 
-    public Context getContext() {
-        return _ctx;
+    private val binder = ServiceBinder(this)
+    var context: Context? = null; private set
+    var running: Boolean = false; private set
+    var startedAt: Long? = null; private set
+    val elapsedTime: Long get() = startedAt?.let { SystemClock.elapsedRealtime() - it } ?: 0L
+
+    protected abstract fun getServiceId(): Int
+    protected abstract fun getServiceType(): Int
+    protected abstract fun onStartService(context: Context)
+    protected abstract fun onStopService(context: Context)
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.i(TAG, "service onStartCommand: ${intent?.action}")
+        when (intent?.action) {
+            ACTION_START_FOREGROUND_SERVICE -> startServiceInternal()
+            ACTION_STOP_FOREGROUND_SERVICE -> stopServiceInternal()
+        }
+        return START_STICKY
     }
 
-    public static void startService(Context context, Class<? extends ForegroundService> service) {
-        Intent service_intent = new Intent(context, service);
-        service_intent.setAction(ForegroundService.ACTION_START_FOREGROUND_SERVICE);
-        context.startService(service_intent);
+    override fun onBind(intent: Intent): IBinder = binder
+
+    private fun startServiceInternal() {
+        Log.i(TAG, "startServiceInternal: ${getServiceId()}")
+        if (running) return
+
+        context = this
+        running = true
+        startedAt = SystemClock.elapsedRealtime()
+        startForegroundCompat()
+        onStartService(context!!)
     }
 
-    public static void stopService(Context context, Class<? extends ForegroundService> service) {
-        Intent service_intent = new Intent(context, service);
-        service_intent.setAction(ForegroundService.ACTION_STOP_FOREGROUND_SERVICE);
-        context.startService(service_intent);
+    private fun stopServiceInternal() {
+        Log.i(TAG, "stopServiceInternal: ${getServiceId()}")
+        if (!running) return
+
+        onStopService(context!!)
+        stopForegroundCompat()
+
+        context = null
+        running = false
+        startedAt = null
     }
 
-    public static void bindService(Context context, Class<? extends ForegroundService> service, ServiceConnection connection) {
-        Intent service_intent = new Intent(context, service);
-        context.bindService(service_intent, connection, Context.BIND_AUTO_CREATE);
-    }
-
-    public static void unbindService(Context context, ServiceConnection connection) {
-        context.unbindService(connection);
-    }
-
-    private void startForegroundService() {
+    private fun startForegroundCompat() {
+        val notification = createNotification(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(getServiceId(), createNotification(this), getServiceType());
+            startForeground(getServiceId(), notification, getServiceType())
         } else {
-            startForeground(getServiceId(), createNotification(this));
+            startForeground(getServiceId(), notification)
         }
     }
 
-    private void stopForegroundService() {
-        stopForeground(true);
-        stopSelf();
-    }
-
-    private static final String CHANNEL_ID = "FOREGROUND_SERVICE_CHANNEL";
-    private static final String CHANNEL_NAME = "FOREGROUND_SERVICE";
-
-    private static void createNotificationChannel(Context context) {
-        android.app.NotificationChannel channel = new android.app.NotificationChannel(
-                CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT);
-        NotificationManager notificationManager = context.getApplicationContext().getSystemService(NotificationManager.class);
-        notificationManager.createNotificationChannel(channel);
-    }
-
-    public NotificationCompat.Builder onBuildNotification(NotificationCompat.Builder builder) {
-        return builder;
-    }
-
-    private Notification createNotification(Context ctx) {
-        createNotificationChannel(ctx);
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentText("Service is running...");
-
-        return onBuildNotification(builder).build();
-    }
-
-    public static class ServiceBinder extends Binder {
-        private final ForegroundService service;
-
-        public ServiceBinder(ForegroundService service) {
-            this.service = service;
+    private fun stopForegroundCompat() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } else {
+            @Suppress("DEPRECATION")
+            stopForeground(true)
         }
-
-        public ForegroundService getService() {
-            return service;
-        }
+        stopSelf()
     }
+
+    private fun createNotification(context: Context): Notification {
+        createNotificationChannel(context)
+
+        val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+        val pendingIntent = PendingIntent.getActivity(
+            context, getServiceId(), launchIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(context.applicationInfo.icon)
+            .setContentText("Service is running...")
+            .setContentIntent(pendingIntent)
+
+        return onBuildNotification(builder).build()
+    }
+
+    open fun onBuildNotification(builder: NotificationCompat.Builder): NotificationCompat.Builder {
+        return builder
+    }
+
+    class ServiceBinder(val service: ForegroundService) : Binder()
 }
