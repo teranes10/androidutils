@@ -29,14 +29,10 @@ object SharedPreferenceExtensions {
     }
 
     fun SharedPreferences.Editor.safePutIntSet(key: String, value: Set<Int>?) {
-        if (value == null) {
-            remove(key)
-        } else {
-            putStringSet(key, value.map { it.toString() }.toSet())
-        }
+        if (value == null) remove(key) else putStringSet(key, value.map { it.toString() }.toSet())
     }
 
-    fun SharedPreferences.getIntSet(key: String): Set<Int> {
-        return getStringSet(key, emptySet())?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
+    fun SharedPreferences.getIntSet(key: String, default: Set<Int>): Set<Int> {
+        return getStringSet(key, null)?.mapNotNull { it.toIntOrNull() }?.toSet() ?: default
     }
 }
