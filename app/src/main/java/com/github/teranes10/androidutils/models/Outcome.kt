@@ -1,5 +1,7 @@
 package com.github.teranes10.androidutils.models
 
+import com.github.teranes10.androidutils.extensions.ExceptionExtensions.displayMessage
+
 data class Outcome<T>(
     val success: Boolean,
     val data: T? = null,
@@ -23,6 +25,14 @@ data class Outcome<T>(
 
         fun error(message: String, type: OutcomeType? = null, networkType: NetworkErrorType? = null): Outcome<*> {
             return Outcome<Any>(success = false, message = message, outcomeType = type, networkType = networkType)
+        }
+
+        fun <T> fail(e: Exception, type: OutcomeType? = null, networkType: NetworkErrorType? = null, data: T? = null): Outcome<T> {
+            return Outcome(success = false, message = e.displayMessage, outcomeType = type, networkType = networkType, data = data)
+        }
+
+        fun error(e: Exception, type: OutcomeType? = null, networkType: NetworkErrorType? = null): Outcome<*> {
+            return Outcome<Any>(success = false, message = e.displayMessage, outcomeType = type, networkType = networkType)
         }
     }
 
