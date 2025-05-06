@@ -1,6 +1,5 @@
 package com.github.teranes10.androidutils.helpers
 
-import android.annotation.SuppressLint
 import android.app.Activity.RESULT_CANCELED
 import android.app.Activity.RESULT_OK
 import android.content.Context
@@ -22,13 +21,15 @@ import com.github.teranes10.androidutils.extensions.IntentExtensions.parcelable
 import com.github.teranes10.androidutils.utils.PermissionUtil
 import java.io.File
 
-@SuppressLint("InlinedApi")
-abstract class MediaProjectionService(serviceId: Int) :
-    ForegroundService(serviceId, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION, START_NOT_STICKY) {
+abstract class MediaProjectionService : ForegroundService() {
 
-    protected abstract fun onStartService(context: Context, resultCode: Int, intent: Intent)
     protected var intent: Intent? = null
     protected var resultCode: Int? = null
+    protected abstract fun onStartService(context: Context, resultCode: Int, intent: Intent)
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    override val serviceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+    override val startType = START_NOT_STICKY
 
     override fun onCommand(intent: Intent, flags: Int, startId: Int): Int? {
         if (intent.action == ACTION_START_FOREGROUND_SERVICE) {
@@ -127,23 +128,24 @@ abstract class MediaProjectionService(serviceId: Int) :
 }
 
 class MediaProjectionServiceHelper(private val context: FragmentActivity, service: Class<out MediaProjectionService>) {
+    private lateinit var pendingExtras: Bundle
 
     private var getScreenCapture: ActivityResultLauncher<Intent> = context.activityResultRegistry.register(
         MediaProjectionService.TAG, context, ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result != null && result.resultCode == RESULT_OK) {
-            val extras = Bundle().apply {
+            val extras = Bundle(pendingExtras).apply {
                 putInt("resultCode", result.resultCode)
                 putParcelable("data", result.data)
             }
-
             ForegroundService.startService(context, service, extras)
         } else {
             Toast.makeText(context, "Screen capture permission denied", Toast.LENGTH_LONG).show()
         }
     }
 
-    fun startService() {
+    fun startService(extras: Bundle = Bundle()) {
+        pendingExtras = extras
         val mediaProjectionManager = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         val captureIntent = mediaProjectionManager.createScreenCaptureIntent()
         getScreenCapture.launch(captureIntent)

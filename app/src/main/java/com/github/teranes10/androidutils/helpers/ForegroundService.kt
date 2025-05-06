@@ -18,77 +18,21 @@ import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 
-abstract class ForegroundService(
-    private val serviceId: Int,
-    private val serviceType: Int,
-    private val startType: Int = START_STICKY
-) : Service() {
+abstract class ForegroundService : Service() {
 
-    companion object {
-        private const val TAG = "ForegroundService"
-        const val ACTION_START_FOREGROUND_SERVICE = "ACTION_START_FOREGROUND_SERVICE"
-        const val ACTION_STOP_FOREGROUND_SERVICE = "ACTION_STOP_FOREGROUND_SERVICE"
-        private const val CHANNEL_ID = "FOREGROUND_SERVICE_CHANNEL"
-        private const val CHANNEL_NAME = "FOREGROUND_SERVICE"
+    abstract val serviceId: Int
+    abstract val serviceType: Int
+    open val startType: Int = START_STICKY
 
-        fun startService(context: Context, service: Class<out ForegroundService>, extras: Bundle? = null) {
-            val intent = Intent(context, service).apply {
-                action = ACTION_START_FOREGROUND_SERVICE
-                extras?.let { putExtras(it) }
-            }
-
-            context.startService(intent)
-
-            if (!isServiceDeclared(context, service)) {
-                Log.e(TAG, "startService: service must be declared in the AndroidManifest.xml!")
-            }
-        }
-
-        fun stopService(context: Context, service: Class<out ForegroundService>, extras: Bundle? = null) {
-            val intent = Intent(context, service).apply {
-                action = ACTION_STOP_FOREGROUND_SERVICE
-                extras?.let { putExtras(it) }
-            }
-
-            context.startService(intent)
-        }
-
-        fun bindService(context: Context, service: Class<out ForegroundService>, connection: ServiceConnection) {
-            val intent = Intent(context, service)
-            context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
-        }
-
-        fun unbindService(context: Context, connection: ServiceConnection) {
-            context.unbindService(connection)
-        }
-
-        private fun createNotificationChannel(context: Context) {
-            val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT)
-            val manager = context.getSystemService(NotificationManager::class.java)
-            manager?.createNotificationChannel(channel)
-        }
-
-        private fun isServiceDeclared(context: Context, serviceClass: Class<out Service>): Boolean {
-            val packageManager = context.packageManager
-            val componentName = ComponentName(context, serviceClass)
-            try {
-                packageManager.getServiceInfo(componentName, PackageManager.GET_META_DATA)
-                return true
-            } catch (e: Exception) {
-                Log.e(TAG, "isServiceDeclared: ", e)
-                return false
-            }
-        }
-    }
+    protected abstract fun onStartService(context: Context)
+    protected abstract fun onStopService(context: Context)
 
     private val binder = ServiceBinder(this)
+
     var context: Context? = null; private set
     var running: Boolean = false; private set
     var startedAt: Long? = null; private set
     val elapsedTime: Long get() = startedAt?.let { SystemClock.elapsedRealtime() - it } ?: 0L
-
-    protected abstract fun onStartService(context: Context)
-    protected abstract fun onStopService(context: Context)
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.i(TAG, "service onStartCommand: ${intent?.action}")
@@ -177,4 +121,61 @@ abstract class ForegroundService(
     }
 
     class ServiceBinder(val service: ForegroundService) : Binder()
+
+    companion object {
+        private const val TAG = "ForegroundService"
+        const val ACTION_START_FOREGROUND_SERVICE = "ACTION_START_FOREGROUND_SERVICE"
+        const val ACTION_STOP_FOREGROUND_SERVICE = "ACTION_STOP_FOREGROUND_SERVICE"
+        private const val CHANNEL_ID = "FOREGROUND_SERVICE_CHANNEL"
+        private const val CHANNEL_NAME = "FOREGROUND_SERVICE"
+
+        fun startService(context: Context, service: Class<out ForegroundService>, extras: Bundle? = null) {
+            val intent = Intent(context, service).apply {
+                action = ACTION_START_FOREGROUND_SERVICE
+                extras?.let { putExtras(it) }
+            }
+
+            context.startService(intent)
+
+            if (!isServiceDeclared(context, service)) {
+                Log.e(TAG, "startService: service must be declared in the AndroidManifest.xml!")
+            }
+        }
+
+        fun stopService(context: Context, service: Class<out ForegroundService>, extras: Bundle? = null) {
+            val intent = Intent(context, service).apply {
+                action = ACTION_STOP_FOREGROUND_SERVICE
+                extras?.let { putExtras(it) }
+            }
+
+            context.startService(intent)
+        }
+
+        fun bindService(context: Context, service: Class<out ForegroundService>, connection: ServiceConnection) {
+            val intent = Intent(context, service)
+            context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
+        }
+
+        fun unbindService(context: Context, connection: ServiceConnection) {
+            context.unbindService(connection)
+        }
+
+        private fun createNotificationChannel(context: Context) {
+            val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT)
+            val manager = context.getSystemService(NotificationManager::class.java)
+            manager?.createNotificationChannel(channel)
+        }
+
+        private fun isServiceDeclared(context: Context, serviceClass: Class<out Service>): Boolean {
+            val packageManager = context.packageManager
+            val componentName = ComponentName(context, serviceClass)
+            try {
+                packageManager.getServiceInfo(componentName, PackageManager.GET_META_DATA)
+                return true
+            } catch (e: Exception) {
+                Log.e(TAG, "isServiceDeclared: ", e)
+                return false
+            }
+        }
+    }
 }
