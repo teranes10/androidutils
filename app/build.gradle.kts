@@ -97,6 +97,7 @@ dependencies {
 
     //firebase
     compileOnly("com.google.firebase:firebase-firestore:24.10.0")
+    compileOnly("com.google.firebase:firebase-storage:20.3.0")
 
     // Testing dependencies
     testImplementation("junit:junit:4.13.2")

@@ -2,6 +2,7 @@ package com.github.teranes10.androidutils.utils
 
 import android.os.Environment
 import android.util.Log
+import com.github.teranes10.androidutils.extensions.ExceptionExtensions.displayMessage
 import com.github.teranes10.androidutils.models.Outcome
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -77,7 +78,7 @@ object FtpUtil {
                 Outcome.fail("Some files failed to download.")
             } catch (e: IOException) {
                 Log.e(TAG, "downloadDir: ", e)
-                Outcome.fail(e.localizedMessage ?: e.message ?: "Something went wrong.")
+                Outcome.fail(e.displayMessage)
             } finally {
                 ftp.logout()
                 ftp.disconnect()
@@ -131,7 +132,7 @@ object FtpUtil {
                 Outcome.fail("Download failed.")
             } catch (e: IOException) {
                 Log.e(TAG, "downloadFile: ", e)
-                Outcome.fail(e.localizedMessage ?: e.message ?: "Something went wrong.")
+                Outcome.fail(e.displayMessage)
             } finally {
                 ftp.logout()
                 ftp.disconnect()

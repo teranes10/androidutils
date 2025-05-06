@@ -12,12 +12,17 @@ import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.Binder
 import android.os.Build
+import android.os.Bundle
 import android.os.IBinder
 import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 
-abstract class ForegroundService : Service() {
+abstract class ForegroundService(
+    private val serviceId: Int,
+    private val serviceType: Int,
+    private val startType: Int = START_STICKY
+) : Service() {
 
     companion object {
         private const val TAG = "ForegroundService"
@@ -26,8 +31,12 @@ abstract class ForegroundService : Service() {
         private const val CHANNEL_ID = "FOREGROUND_SERVICE_CHANNEL"
         private const val CHANNEL_NAME = "FOREGROUND_SERVICE"
 
-        fun startService(context: Context, service: Class<out ForegroundService>) {
-            val intent = Intent(context, service).apply { action = ACTION_START_FOREGROUND_SERVICE }
+        fun startService(context: Context, service: Class<out ForegroundService>, extras: Bundle? = null) {
+            val intent = Intent(context, service).apply {
+                action = ACTION_START_FOREGROUND_SERVICE
+                extras?.let { putExtras(it) }
+            }
+
             context.startService(intent)
 
             if (!isServiceDeclared(context, service)) {
@@ -35,8 +44,12 @@ abstract class ForegroundService : Service() {
             }
         }
 
-        fun stopService(context: Context, service: Class<out ForegroundService>) {
-            val intent = Intent(context, service).apply { action = ACTION_STOP_FOREGROUND_SERVICE }
+        fun stopService(context: Context, service: Class<out ForegroundService>, extras: Bundle? = null) {
+            val intent = Intent(context, service).apply {
+                action = ACTION_STOP_FOREGROUND_SERVICE
+                extras?.let { putExtras(it) }
+            }
+
             context.startService(intent)
         }
 
@@ -74,24 +87,31 @@ abstract class ForegroundService : Service() {
     var startedAt: Long? = null; private set
     val elapsedTime: Long get() = startedAt?.let { SystemClock.elapsedRealtime() - it } ?: 0L
 
-    protected abstract fun getServiceId(): Int
-    protected abstract fun getServiceType(): Int
     protected abstract fun onStartService(context: Context)
     protected abstract fun onStopService(context: Context)
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.i(TAG, "service onStartCommand: ${intent?.action}")
-        when (intent?.action) {
+
+        if (intent == null) {
+            startServiceInternal()
+            return startType
+        }
+
+        onCommand(intent, flags, startId)?.let { return it }
+
+        when (intent.action) {
             ACTION_START_FOREGROUND_SERVICE -> startServiceInternal()
             ACTION_STOP_FOREGROUND_SERVICE -> stopServiceInternal()
         }
-        return START_STICKY
+
+        return startType
     }
 
     override fun onBind(intent: Intent): IBinder = binder
 
     private fun startServiceInternal() {
-        Log.i(TAG, "startServiceInternal: ${getServiceId()}")
+        Log.i(TAG, "startServiceInternal: $serviceId")
         if (running) return
 
         context = this
@@ -102,7 +122,7 @@ abstract class ForegroundService : Service() {
     }
 
     private fun stopServiceInternal() {
-        Log.i(TAG, "stopServiceInternal: ${getServiceId()}")
+        Log.i(TAG, "stopServiceInternal: $serviceId")
         if (!running) return
 
         onStopService(context!!)
@@ -116,9 +136,9 @@ abstract class ForegroundService : Service() {
     private fun startForegroundCompat() {
         val notification = createNotification(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(getServiceId(), notification, getServiceType())
+            startForeground(serviceId, notification, serviceType)
         } else {
-            startForeground(getServiceId(), notification)
+            startForeground(serviceId, notification)
         }
     }
 
@@ -137,8 +157,7 @@ abstract class ForegroundService : Service() {
 
         val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
         val pendingIntent = PendingIntent.getActivity(
-            context, getServiceId(), launchIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            context, serviceId, launchIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -151,6 +170,10 @@ abstract class ForegroundService : Service() {
 
     open fun onBuildNotification(builder: NotificationCompat.Builder): NotificationCompat.Builder {
         return builder
+    }
+
+    open fun onCommand(intent: Intent, flags: Int, startId: Int): Int? {
+        return null
     }
 
     class ServiceBinder(val service: ForegroundService) : Binder()

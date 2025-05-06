@@ -2,6 +2,7 @@ package com.github.teranes10.androidutils.utils
 
 import android.os.SystemClock
 import android.util.Log
+import com.github.teranes10.androidutils.extensions.ExceptionExtensions.displayMessage
 import com.github.teranes10.androidutils.extensions.RxJavaExtensions.await
 import com.github.teranes10.androidutils.extensions.SignalRExtensions.invokeSuspend
 import com.microsoft.signalr.HubConnection
@@ -12,8 +13,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -74,7 +73,7 @@ abstract class SignalRUtil(protected val scope: CoroutineScope = CoroutineScope(
             keepAliveInterval = KEEP_ALIVE_INTERVAL
             setListeners(this)
             onClosed {
-                Log.e(TAG, "onClosed (start reconnection): ${setTag()}: ${it.localizedMessage}")
+                Log.e(TAG, "onClosed (start reconnection): ${setTag()}: ${it.displayMessage}")
                 scope.launch { reconnect() }
             }
         }
@@ -146,7 +145,7 @@ abstract class SignalRUtil(protected val scope: CoroutineScope = CoroutineScope(
                 hubConnection?.start()?.await()
                 onConnected()
             } catch (e: Exception) {
-                Log.e(TAG, "Connection error: ${e.localizedMessage}", e)
+                Log.e(TAG, "Connection error: ${e.displayMessage}", e)
                 onConnectionClosed()
             } finally {
                 isConnecting.set(false)
@@ -198,7 +197,7 @@ abstract class SignalRUtil(protected val scope: CoroutineScope = CoroutineScope(
                 hubConnection?.stop()?.blockingAwait()
                 Log.i(TAG, "Connection closed.")
             } catch (e: Exception) {
-                Log.e(TAG, "Error closing connection: ${e.localizedMessage}", e)
+                Log.e(TAG, "Error closing connection: ${e.displayMessage}", e)
             }
         }
     }

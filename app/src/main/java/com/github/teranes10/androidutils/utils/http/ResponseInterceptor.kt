@@ -1,5 +1,6 @@
 package com.github.teranes10.androidutils.utils.http
 
+import com.github.teranes10.androidutils.extensions.ExceptionExtensions.displayMessage
 import com.github.teranes10.androidutils.models.Outcome
 import com.google.gson.Gson
 import okhttp3.Interceptor
@@ -33,7 +34,7 @@ object ResponseInterceptor {
 
                 return@Interceptor createErrorResponse(request, message, type)
             } catch (e: Exception) {
-                val message = e.localizedMessage ?: e.message ?: ""
+                val message = e.displayMessage
                 if (message.contains("Unable to resolve host")
                     || message.contains("No address associated with hostname")
                     || message.contains("timeout")

@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
 
 object CoroutineScopeExtensions {
 
-    fun CoroutineScope.launchFixedRate(
+    fun CoroutineScope.scheduleWithFixedDelay(
         delay: Long,
         initialDelay: Long = 0L,
         timeUnit: TimeUnit = TimeUnit.MILLISECONDS,

@@ -6,6 +6,7 @@ import android.location.Geocoder.GeocodeListener
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
+import com.github.teranes10.androidutils.extensions.ExceptionExtensions.displayMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -52,7 +53,7 @@ class AddressProvider(context: Context) {
                 val addresses = geocoder.getFromLocation(latitude, longitude, 1)
                 addresses?.firstOrNull()?.toCustomAddress()
             } catch (e: Exception) {
-                Log.e(TAG, "Geocoder error: ${e.localizedMessage}")
+                Log.e(TAG, "Geocoder error: ${e.displayMessage}")
                 null
             }
         }

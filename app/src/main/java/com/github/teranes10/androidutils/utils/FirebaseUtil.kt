@@ -1,6 +1,7 @@
 package com.github.teranes10.androidutils.utils
 
 import android.util.Log
+import com.github.teranes10.androidutils.extensions.ExceptionExtensions.displayMessage
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
@@ -11,7 +12,7 @@ object FirebaseUtil {
             val snapshot = FirebaseFirestore.getInstance().collection(collectionName).get().await()
             snapshot.toObjects(clazz)
         } catch (e: Exception) {
-            Log.e("FirebaseUtil", "Error getting documents: ${e.localizedMessage}")
+            Log.e("FirebaseUtil", "Error getting documents: ${e.displayMessage}")
             emptyList()
         }
     }
@@ -21,7 +22,7 @@ object FirebaseUtil {
             val document = FirebaseFirestore.getInstance().collection(collectionName).document(docId).get().await()
             document.toObject(clazz)
         } catch (e: Exception) {
-            Log.e("FirebaseUtil", "Error getting document: ${e.localizedMessage}")
+            Log.e("FirebaseUtil", "Error getting document: ${e.displayMessage}")
             null
         }
     }
