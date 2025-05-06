@@ -34,6 +34,14 @@ data class Outcome<T>(
         fun error(e: Exception, type: OutcomeType? = null, networkType: NetworkErrorType? = null): Outcome<*> {
             return Outcome<Any>(success = false, message = e.displayMessage, outcomeType = type, networkType = networkType)
         }
+
+        fun <T> fail(e: Throwable, type: OutcomeType? = null, networkType: NetworkErrorType? = null, data: T? = null): Outcome<T> {
+            return Outcome(success = false, message = e.displayMessage, outcomeType = type, networkType = networkType, data = data)
+        }
+
+        fun error(e: Throwable, type: OutcomeType? = null, networkType: NetworkErrorType? = null): Outcome<*> {
+            return Outcome<Any>(success = false, message = e.displayMessage, outcomeType = type, networkType = networkType)
+        }
     }
 
     enum class NetworkErrorType {
