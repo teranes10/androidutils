@@ -1,6 +1,11 @@
 package com.github.teranes10.androidutils.utils
 
 import android.os.SystemClock
+import android.util.Log
+import com.github.teranes10.androidutils.extensions.CancelableSchedule
+import com.github.teranes10.androidutils.extensions.CoroutineScopeExtensions
+import com.github.teranes10.androidutils.extensions.CoroutineScopeExtensions.scheduleWithFixedDelay
+import com.github.teranes10.androidutils.extensions.ExceptionExtensions.displayMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -9,72 +14,63 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 abstract class TimerUtil(
     private var interval: Long,
+    private val timeUnit: TimeUnit = TimeUnit.MILLISECONDS,
     private val tag: String = "TimerUtil",
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val executor: ScheduledExecutorService? = null,
+    private val scope: CoroutineScope? = null
 ) {
-    private var job: Job? = null
-    private val lastExecutionTime = AtomicLong(0L)
+    private val createdScope = scope ?: CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var cancelableSchedule: CancelableSchedule? = null
+
+    val isRunning: Boolean get() = cancelableSchedule?.isRunning == true
 
     abstract suspend fun execute()
 
-    fun start(immediate: Boolean = false) {
-        if (job?.isActive == true || interval <= 0) return
+    fun start(initialDelay: Long = 0) {
+        if (interval <= 0 || cancelableSchedule?.isRunning == true) return
 
-        job = scope.launch {
-            if (immediate) {
-                executeSafely()
-                lastExecutionTime.set(SystemClock.elapsedRealtime())
-            }
-
-            while (isActive) {
-                delay(interval)
-                executeSafely()
-                lastExecutionTime.set(SystemClock.elapsedRealtime())
-            }
+        cancelableSchedule = createdScope.scheduleWithFixedDelay(
+            delay = interval,
+            initialDelay = initialDelay,
+            timeUnit = timeUnit,
+            executor = executor
+        ) {
+            execute()
         }
     }
 
     fun stop() {
-        job?.cancel()
-        job = null
+        cancelableSchedule?.cancel()
+        cancelableSchedule = null
     }
 
-    fun restart(immediate: Boolean = false) {
+    fun restart(initialDelay: Long = 0) {
         stop()
-        start(immediate)
+        start(initialDelay)
     }
 
     fun updateInterval(newInterval: Long) {
         if (newInterval <= 0 || interval == newInterval) return
-
         interval = newInterval
 
-        val elapsed = SystemClock.elapsedRealtime() - lastExecutionTime.get()
+        val elapsed = cancelableSchedule?.let { SystemClock.elapsedRealtime() - it.lastTick } ?: 0
         val remaining = (newInterval - elapsed).coerceAtLeast(0)
 
-        if (job?.isActive == true) {
-            job?.cancel()
-            job = scope.launch {
-                delay(remaining)
-                start(immediate = true)
-            }
-        }
-    }
-
-    private suspend fun executeSafely() {
-        try {
-            execute()
-        } catch (e: Exception) {
-            println("TimerUtil:$tag - Error: ${e.message}")
-        }
+        restart(remaining)
     }
 
     fun destroy() {
         stop()
-        scope.cancel()
+
+        if (scope == null) {
+            createdScope.cancel()
+        }
     }
 }
