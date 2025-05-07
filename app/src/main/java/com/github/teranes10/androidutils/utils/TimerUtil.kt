@@ -31,7 +31,7 @@ abstract class TimerUtil(
 
     val isRunning: Boolean get() = cancelableSchedule?.isRunning == true
 
-    abstract suspend fun execute()
+    abstract suspend fun execute(): Boolean
 
     fun start(initialDelay: Long = 0) {
         if (interval <= 0 || cancelableSchedule?.isRunning == true) return
