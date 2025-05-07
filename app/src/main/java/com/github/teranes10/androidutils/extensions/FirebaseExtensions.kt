@@ -6,6 +6,7 @@ import com.github.teranes10.androidutils.extensions.ExceptionExtensions.displayM
 import com.github.teranes10.androidutils.models.Outcome
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageMetadata
 import kotlinx.coroutines.tasks.await
 import java.io.File
 
@@ -32,6 +33,7 @@ object FirebaseExtensions {
         directory: String? = null,
         fileName: String? = null,
         removeFile: Boolean = true,
+        metadata: StorageMetadata? = null,
         onProgress: ((percentage: Double) -> Unit)? = null
     ): Outcome<String> {
         if (!file.exists()) {
@@ -45,7 +47,7 @@ object FirebaseExtensions {
 
         val inputStream = context.contentResolver.openInputStream(uri) ?: return Outcome.fail("Unable to open input stream for URI: $uri")
 
-        val uploadTask = fileRef.putStream(inputStream)
+        val uploadTask = if (metadata != null) fileRef.putStream(inputStream, metadata) else fileRef.putStream(inputStream)
 
         return try {
             uploadTask.addOnProgressListener {
