@@ -19,4 +19,20 @@ object DoubleExtensions {
         val formatted = formatter.format(this)
         return if (includeSymbol) formatted else formatted.replace(Regex("[^\\d.,]"), "").trim()
     }
+
+    fun Double.safeDiv(divisor: Double, fallback: Double = 0.0): Double =
+        if (divisor.isFinite() && divisor != 0.0) this / divisor else fallback
+
+    fun Double.safeDiv(divisor: Float, fallback: Double = 0.0): Double =
+        if (divisor.isFinite() && divisor != 0f) this / divisor else fallback
+
+    fun Double.safeDiv(divisor: Int, fallback: Double = 0.0): Double =
+        if (divisor != 0) this / divisor else fallback
+
+    fun Double.safeDiv(divisor: Long, fallback: Double = 0.0): Double =
+        if (divisor != 0L) this / divisor else fallback
+
+    fun Double.isPositive(): Boolean {
+        return this > 0.0 && this.isFinite()
+    }
 }
