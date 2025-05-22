@@ -41,6 +41,11 @@ class Loading(private val context: Activity, private val fullScreen: Boolean = f
         dialog.show()
     }
 
+    fun setText(message: String) {
+        textView.text = message
+        textView.visibility = View.VISIBLE
+    }
+
     fun stop() {
         if (dialog.isShowing) {
             dialog.dismiss()

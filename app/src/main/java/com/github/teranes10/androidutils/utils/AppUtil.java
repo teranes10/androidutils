@@ -27,7 +27,7 @@ public class AppUtil {
         }
     }
 
-    private static Boolean isVersionUpToDate(String deviceVersion, String serverVersion) {
+    public static Boolean isVersionUpToDate(String deviceVersion, String serverVersion) {
         try {
             int[] deviceVersionComponents = Arrays.stream(deviceVersion.replaceAll("[^0-9.]", "").split("\\."))
                     .mapToInt(Integer::parseInt).toArray();
