@@ -1,41 +1,44 @@
-package com.github.teranes10.androidutils.ui;
+package com.github.teranes10.androidutils.ui
 
-import android.content.Context;
-import android.view.WindowManager;
+import android.content.Context
+import android.view.LayoutInflater
+import android.view.View
+import android.view.WindowManager
+import com.github.teranes10.androidutils.databinding.CustomLoadingBinding
 
-import com.github.teranes10.androidutils.databinding.CustomLoadingBinding;
+class FloatingLoading(context: Context, text: String? = null) {
+    private val _floatingAlert: FloatingAlert
+    private var _binding: CustomLoadingBinding? = null
 
-public class FloatingLoading {
-    private final FloatingAlert _floatingAlert;
-    private CustomLoadingBinding _binding;
+    init {
+        _floatingAlert = FloatingAlert(context)
+            .setWidth(WindowManager.LayoutParams.MATCH_PARENT)
+            .setHeight(WindowManager.LayoutParams.MATCH_PARENT)
+            .bindView { inflater: LayoutInflater?, alert: FloatingAlert ->
+                _binding = CustomLoadingBinding.inflate(inflater!!, null, false)
 
-    public FloatingLoading(Context context) {
-        _floatingAlert = new FloatingAlert(context)
-                .setWidth(WindowManager.LayoutParams.MATCH_PARENT)
-                .setHeight(WindowManager.LayoutParams.MATCH_PARENT)
-                .bindView((inflater, alert) -> {
-                    _binding = CustomLoadingBinding.inflate(inflater, null, false);
-                    return _binding.getRoot();
-                })
-                .setAlpha(95)
-                .build();
+                if (text != null) {
+                    _binding?.loadingText?.text = text
+                    _binding?.loadingText?.visibility = View.VISIBLE
+                }
+
+                _binding?.root
+            }
+            .setAlpha(95f)
+            .build()
     }
 
-    public void show() {
-        if (_floatingAlert != null) {
-            _floatingAlert.show();
-        }
+    fun show() {
+        _floatingAlert.show()
     }
 
-    public void hide() {
-        if (_floatingAlert != null) {
-            _floatingAlert.close();
-        }
+    fun hide() {
+        _floatingAlert.close()
     }
 
-    public void setText(String text) {
-        if (_floatingAlert.isShowing() && _binding != null) {
-            _binding.loadingText.setText(text);
+    fun setText(text: String) {
+        if (_floatingAlert.isShowing && _binding != null) {
+            _binding?.loadingText?.text = text
         }
     }
 }

@@ -5,7 +5,6 @@ import android.app.Dialog
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.view.View
-import android.widget.LinearLayout.LayoutParams
 import android.widget.TextView
 import com.github.teranes10.androidutils.R
 
@@ -19,12 +18,12 @@ class Loading(private val context: Activity, private val fullScreen: Boolean = f
 
     private val textView: TextView = dialog.findViewById(R.id.loading_text)
 
-    fun start(message: String? = "") {
+    fun start(message: String? = null) {
         if (context.isFinishing || context.isDestroyed || dialog.isShowing) {
             return
         }
 
-        if (!message.isNullOrBlank()) {
+        if (message != null) {
             textView.text = message
             textView.visibility = View.VISIBLE
 
@@ -43,7 +42,6 @@ class Loading(private val context: Activity, private val fullScreen: Boolean = f
 
     fun setText(message: String) {
         textView.text = message
-        textView.visibility = View.VISIBLE
     }
 
     fun stop() {
