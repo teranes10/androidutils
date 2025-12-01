@@ -127,9 +127,9 @@ public abstract class CustomAlertBase<T extends CustomAlertBase<T>> {
         return (T) this;
     }
 
-    public T setMessage(String message, int alignment, float size) {
+    public T setMessage(String message, int textAlignment, float size) {
         _textView.setText(message);
-        _textView.setTextAlignment(alignment);
+        _textView.setTextAlignment(textAlignment);
         _textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, size);
         return (T) this;
     }
@@ -142,6 +142,12 @@ public abstract class CustomAlertBase<T extends CustomAlertBase<T>> {
     public T setTextAlignment(int alignment) {
         //View.TEXT_ALIGNMENT_CENTER
         _textView.setTextAlignment(alignment);
+        return (T) this;
+    }
+
+    public T setTextGravity(int gravity) {
+        //Gravity.CENTER
+        _textView.setGravity(gravity);
         return (T) this;
     }
 
