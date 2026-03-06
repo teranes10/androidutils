@@ -1,7 +1,10 @@
 package com.github.teranes10.androidutils.utils.location
 
+import kotlin.math.sqrt
+
 data class MovementValues(val x: Float, val y: Float, val z: Float) {
     val isMoving: Boolean = checkIsMoving()
+    val magnitude = sqrt(x * x + y * y + z * z)
 
     companion object {
         const val thresh: Float = 1.0f

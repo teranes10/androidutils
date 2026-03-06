@@ -39,7 +39,8 @@
                 android:textAlignment="center"
                 android:textColor="@color/black"
                 android:textSize="18sp"
-                android:textStyle="bold|italic" />
+                android:textStyle="bold|italic"
+                android:autoLink="web" />
 
             <LinearLayout
                 android:id="@+id/alert_text_layout"

@@ -40,10 +40,11 @@ abstract class LocationProvider(private val context: Context) {
     private val satelliteStatusCallback = object : GnssStatus.Callback() {
         override fun onSatelliteStatusChanged(status: GnssStatus) {
             super.onSatelliteStatusChanged(status)
+            satellitesInfo.set(status)
+
             val now = SystemClock.elapsedRealtime()
             if (minIntervalMillis > 0 && now - lastSatellitesUpdate >= minIntervalMillis) {
                 lastSatellitesUpdate = now
-                satellitesInfo.set(status)
                 satelliteListener?.onStatusChanged(status)
             }
         }
@@ -53,11 +54,12 @@ abstract class LocationProvider(private val context: Context) {
     private val sensorEventCallback: SensorEventListener = object : SensorEventCallback() {
         override fun onSensorChanged(event: SensorEvent) {
             super.onSensorChanged(event)
+            val values = MovementValues(event.values[0], event.values[1], event.values[2])
+            movementsInfo.set(values)
+
             val now = SystemClock.elapsedRealtime()
             if (minIntervalMillis > 0 && now - lastSensorUpdate >= minIntervalMillis) {
                 lastSensorUpdate = now
-                val values = MovementValues(event.values[0], event.values[1], event.values[2])
-                movementsInfo.set(values)
                 movementListener?.onMovementChanged(values)
             }
         }
@@ -117,7 +119,7 @@ abstract class LocationProvider(private val context: Context) {
         if (enableAccelerometerInfo) {
             sensorManager.registerListener(
                 sensorEventCallback, accelerometer,
-                SensorManager.SENSOR_DELAY_NORMAL, SensorManager.SENSOR_STATUS_ACCURACY_HIGH, handler
+                SensorManager.SENSOR_DELAY_GAME, SensorManager.SENSOR_STATUS_UNRELIABLE, handler
             )
         }
 
