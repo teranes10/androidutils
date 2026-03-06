@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-abstract class LocationProvider(private val context: Context) {
+abstract class LocationProvider(private val context: Context, private val magnitudeHistorySize: Int = 50, calibrationFactorSize: Int = 10) {
     protected val locationManager: LocationManager = context.applicationContext.getSystemService(LocationManager::class.java)
     private val sensorManager: SensorManager = context.applicationContext.getSystemService(SensorManager::class.java)
     private val accelerometer: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
@@ -35,6 +35,8 @@ abstract class LocationProvider(private val context: Context) {
     private var enableAccelerometerInfo: Boolean = false
     private var movementListener: IMovementListener? = null
     val movementsInfo: AtomicReference<MovementValues?> = AtomicReference(null)
+    private val magnitudeHistory = ArrayDeque<Float>(magnitudeHistorySize)
+    val averageMagnitude: Double get() = magnitudeHistory.average()
 
     private var lastSatellitesUpdate: Long = 0
     private val satelliteStatusCallback = object : GnssStatus.Callback() {
@@ -56,6 +58,8 @@ abstract class LocationProvider(private val context: Context) {
             super.onSensorChanged(event)
             val values = MovementValues(event.values[0], event.values[1], event.values[2])
             movementsInfo.set(values)
+            val filteredMag = if (values.magnitude < 0.03f) 0f else values.magnitude
+            addMagnitude(filteredMag)
 
             val now = SystemClock.elapsedRealtime()
             if (minIntervalMillis > 0 && now - lastSensorUpdate >= minIntervalMillis) {
@@ -67,6 +71,13 @@ abstract class LocationProvider(private val context: Context) {
 
     private var handlerThread: HandlerThread? = null
     protected var handler: Handler? = null
+
+    private fun addMagnitude(magnitude: Float) {
+        if (magnitudeHistory.size >= magnitudeHistorySize) {
+            magnitudeHistory.removeFirst()
+        }
+        magnitudeHistory.addLast(magnitude)
+    }
 
     val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
     val activeProviders get() = providers.filter { locationManager.isProviderEnabled(it) }
@@ -117,10 +128,7 @@ abstract class LocationProvider(private val context: Context) {
         }
 
         if (enableAccelerometerInfo) {
-            sensorManager.registerListener(
-                sensorEventCallback, accelerometer,
-                SensorManager.SENSOR_DELAY_GAME, SensorManager.SENSOR_STATUS_UNRELIABLE, handler
-            )
+            sensorManager.registerListener(sensorEventCallback, accelerometer, SensorManager.SENSOR_DELAY_GAME, handler)
         }
 
         return Outcome.ok(true, "Location updates started with ${activeProviders.joinToString(",")}")
