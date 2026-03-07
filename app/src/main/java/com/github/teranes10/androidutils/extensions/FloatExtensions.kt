@@ -21,4 +21,12 @@ object FloatExtensions {
     fun Float.isPositive(): Boolean {
         return this > 0.0 && this.isFinite()
     }
+
+    fun Collection<Float>.median(): Float {
+        if (isEmpty()) return 0f
+        val arr = toFloatArray()
+        arr.sort()
+        val mid = arr.size / 2
+        return if (arr.size % 2 == 0) (arr[mid - 1] + arr[mid]) / 2f else arr[mid]
+    }
 }

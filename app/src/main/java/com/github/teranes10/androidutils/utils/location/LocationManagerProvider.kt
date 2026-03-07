@@ -2,10 +2,23 @@ package com.github.teranes10.androidutils.utils.location
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorManager
 import android.location.LocationListener
 import com.github.teranes10.androidutils.models.Outcome
 
-class LocationManagerProvider(context: Context, listener: ILocationListener?) : LocationProvider(context) {
+class LocationManagerProvider(
+    context: Context, listener: ILocationListener?, sensorType: Int = Sensor.TYPE_LINEAR_ACCELERATION,
+    sensorDelay: Int = SensorManager.SENSOR_DELAY_GAME,
+    lowPassFilterAlpha: Float = 0.2f,
+    magnitudeHistorySize: Int = 50
+) : LocationProvider(
+    context,
+    sensorType = sensorType,
+    sensorDelay = sensorDelay,
+    lowPassFilterAlpha = lowPassFilterAlpha,
+    magnitudeHistorySize = magnitudeHistorySize
+) {
     private val locationListener = LocationListener { location -> listener?.onLocationChanged(location) }
 
     @SuppressLint("MissingPermission")

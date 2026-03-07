@@ -35,4 +35,12 @@ object DoubleExtensions {
     fun Double.isPositive(): Boolean {
         return this > 0.0 && this.isFinite()
     }
+
+    fun Collection<Double>.median(): Double {
+        if (isEmpty()) return 0.0
+        val arr = toDoubleArray()
+        arr.sort()
+        val mid = arr.size / 2
+        return if (arr.size % 2 == 0) (arr[mid - 1] + arr[mid]) / 2 else arr[mid]
+    }
 }

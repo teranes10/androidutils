@@ -16,15 +16,24 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.SystemClock
 import androidx.core.app.ActivityCompat
+import com.github.teranes10.androidutils.extensions.FloatExtensions.median
 import com.github.teranes10.androidutils.models.Outcome
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
+import kotlin.math.abs
+import kotlin.math.sqrt
 
-abstract class LocationProvider(private val context: Context, private val magnitudeHistorySize: Int = 50, calibrationFactorSize: Int = 10) {
+abstract class LocationProvider(
+    private val context: Context,
+    private val sensorType: Int,
+    private val sensorDelay: Int,
+    private val lowPassFilterAlpha: Float,
+    private val magnitudeHistorySize: Int
+) {
     protected val locationManager: LocationManager = context.applicationContext.getSystemService(LocationManager::class.java)
     private val sensorManager: SensorManager = context.applicationContext.getSystemService(SensorManager::class.java)
-    private val accelerometer: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
+    private val accelerometer: Sensor? = sensorManager.getDefaultSensor(sensorType)
 
     private var minIntervalMillis: Long = 0
 
@@ -34,9 +43,6 @@ abstract class LocationProvider(private val context: Context, private val magnit
 
     private var enableAccelerometerInfo: Boolean = false
     private var movementListener: IMovementListener? = null
-    val movementsInfo: AtomicReference<MovementValues?> = AtomicReference(null)
-    private val magnitudeHistory = ArrayDeque<Float>(magnitudeHistorySize)
-    val averageMagnitude: Double get() = magnitudeHistory.average()
 
     private var lastSatellitesUpdate: Long = 0
     private val satelliteStatusCallback = object : GnssStatus.Callback() {
@@ -52,32 +58,52 @@ abstract class LocationProvider(private val context: Context, private val magnit
         }
     }
 
-    private var lastSensorUpdate: Long = 0
+    private val magnitudeHistory = ArrayDeque<Float>(magnitudeHistorySize)
+    val magnitude: Float get() = magnitudeHistory.median()
+
+    private var _lastMagnitude: Float? = null
+    private var filteredValues: FloatArray? = null
     private val sensorEventCallback: SensorEventListener = object : SensorEventCallback() {
         override fun onSensorChanged(event: SensorEvent) {
             super.onSensorChanged(event)
-            val values = MovementValues(event.values[0], event.values[1], event.values[2])
-            movementsInfo.set(values)
-            val filteredMag = if (values.magnitude < 0.03f) 0f else values.magnitude
-            addMagnitude(filteredMag)
+            filteredValues = lowPass(event.values, filteredValues, lowPassFilterAlpha)
+            val x = filteredValues!![0]
+            val y = filteredValues!![1]
+            val z = filteredValues!![2]
 
-            val now = SystemClock.elapsedRealtime()
-            if (minIntervalMillis > 0 && now - lastSensorUpdate >= minIntervalMillis) {
-                lastSensorUpdate = now
-                movementListener?.onMovementChanged(values)
+            val magnitude = sqrt(x * x + y * y + z * z)
+
+            // dead-zone filter (ignore vibration)
+            val filteredMag = if (magnitude < 0.03f) 0f else magnitude
+
+            // spike filter (ignore bumps)
+            if (filteredMag > 0.5f) return
+
+            // delta filter (ignore sudden change)
+            _lastMagnitude?.let {
+                val delta = abs(filteredMag - it)
+                if (delta > 0.3f) return
             }
+
+            if (magnitudeHistory.size >= magnitudeHistorySize) {
+                magnitudeHistory.removeFirst()
+            }
+
+            magnitudeHistory.addLast(filteredMag)
+            _lastMagnitude = filteredMag
+
+            movementListener?.onMovementChanged(event.values)
         }
+    }
+
+    fun lowPass(input: FloatArray, output: FloatArray?, alpha: Float): FloatArray {
+        if (output == null) return input.clone()
+        for (i in input.indices) output[i] = output[i] + alpha * (input[i] - output[i])
+        return output
     }
 
     private var handlerThread: HandlerThread? = null
     protected var handler: Handler? = null
-
-    private fun addMagnitude(magnitude: Float) {
-        if (magnitudeHistory.size >= magnitudeHistorySize) {
-            magnitudeHistory.removeFirst()
-        }
-        magnitudeHistory.addLast(magnitude)
-    }
 
     val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
     val activeProviders get() = providers.filter { locationManager.isProviderEnabled(it) }
@@ -128,7 +154,7 @@ abstract class LocationProvider(private val context: Context, private val magnit
         }
 
         if (enableAccelerometerInfo) {
-            sensorManager.registerListener(sensorEventCallback, accelerometer, SensorManager.SENSOR_DELAY_GAME, handler)
+            sensorManager.registerListener(sensorEventCallback, accelerometer, sensorDelay, handler)
         }
 
         return Outcome.ok(true, "Location updates started with ${activeProviders.joinToString(",")}")
@@ -180,7 +206,7 @@ abstract class LocationProvider(private val context: Context, private val magnit
     }
 
     interface IMovementListener {
-        fun onMovementChanged(values: MovementValues)
+        fun onMovementChanged(values: FloatArray?)
     }
 
     companion object {
