@@ -24,16 +24,13 @@ import kotlin.coroutines.suspendCoroutine
 import kotlin.math.abs
 import kotlin.math.sqrt
 
-abstract class LocationProvider(
-    private val context: Context,
-    private val sensorType: Int,
-    private val sensorDelay: Int,
-    private val lowPassFilterAlpha: Float,
-    private val magnitudeHistorySize: Int
-) {
-    protected val locationManager: LocationManager = context.applicationContext.getSystemService(LocationManager::class.java)
-    private val sensorManager: SensorManager = context.applicationContext.getSystemService(SensorManager::class.java)
-    private val accelerometer: Sensor? = sensorManager.getDefaultSensor(sensorType)
+abstract class LocationProvider(private val context: Context) {
+    protected val locationManager: LocationManager =
+        context.applicationContext.getSystemService(LocationManager::class.java)
+    private val sensorManager: SensorManager =
+        context.applicationContext.getSystemService(SensorManager::class.java)
+    private val accelerometer: Sensor? =
+        sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
 
     private var minIntervalMillis: Long = 0
 
@@ -58,7 +55,7 @@ abstract class LocationProvider(
         }
     }
 
-    private val magnitudeHistory = ArrayDeque<Float>(magnitudeHistorySize)
+    private val magnitudeHistory = ArrayDeque<Float>(MAGNITUDE_HISTORY_SIZE)
     val magnitude: Float get() = magnitudeHistory.median()
 
     private var _lastMagnitude: Float? = null
@@ -66,7 +63,7 @@ abstract class LocationProvider(
     private val sensorEventCallback: SensorEventListener = object : SensorEventCallback() {
         override fun onSensorChanged(event: SensorEvent) {
             super.onSensorChanged(event)
-            filteredValues = lowPass(event.values, filteredValues, lowPassFilterAlpha)
+            filteredValues = lowPass(event.values, filteredValues, MAGNITUDE_ALPHA)
             val x = filteredValues!![0]
             val y = filteredValues!![1]
             val z = filteredValues!![2]
@@ -77,15 +74,15 @@ abstract class LocationProvider(
             val filteredMag = if (magnitude < 0.03f) 0f else magnitude
 
             // spike filter (ignore bumps)
-            if (filteredMag > 0.5f) return
+            if (filteredMag > 0.8f) return
 
             // delta filter (ignore sudden change)
             _lastMagnitude?.let {
                 val delta = abs(filteredMag - it)
-                if (delta > 0.3f) return
+                if (delta > 0.15f) return
             }
 
-            if (magnitudeHistory.size >= magnitudeHistorySize) {
+            if (magnitudeHistory.size >= MAGNITUDE_HISTORY_SIZE) {
                 magnitudeHistory.removeFirst()
             }
 
@@ -132,7 +129,11 @@ abstract class LocationProvider(
     }
 
     @SuppressLint("MissingPermission")
-    open fun startUpdates(intervalMillis: Long, minIntervalMillis: Long, minDistance: Float): Outcome<*> {
+    open fun startUpdates(
+        intervalMillis: Long,
+        minIntervalMillis: Long,
+        minDistance: Float
+    ): Outcome<*> {
         this.minIntervalMillis = minIntervalMillis
 
         val permissionResult = hasPermissions()
@@ -154,10 +155,18 @@ abstract class LocationProvider(
         }
 
         if (enableAccelerometerInfo) {
-            sensorManager.registerListener(sensorEventCallback, accelerometer, sensorDelay, handler)
+            sensorManager.registerListener(
+                sensorEventCallback,
+                accelerometer,
+                SensorManager.SENSOR_DELAY_GAME,
+                handler
+            )
         }
 
-        return Outcome.ok(true, "Location updates started with ${activeProviders.joinToString(",")}")
+        return Outcome.ok(
+            true,
+            "Location updates started with ${activeProviders.joinToString(",")}"
+        )
     }
 
     open fun stopUpdates() {
@@ -211,5 +220,7 @@ abstract class LocationProvider(
 
     companion object {
         private const val TAG = "LocationProvider"
+        private const val MAGNITUDE_ALPHA = 0.2f
+        private const val MAGNITUDE_HISTORY_SIZE = 50
     }
 }
