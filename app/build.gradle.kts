@@ -70,6 +70,7 @@ dependencies {
     // Core Android libraries
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
+    implementation(libs.cardview)
 
     // Retrofit
     compileOnly("com.squareup.retrofit2:retrofit:2.9.0")
