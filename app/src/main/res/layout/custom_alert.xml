@@ -18,7 +18,9 @@
             android:background="#f1f3f4"
             android:minWidth="450dp"
             android:orientation="vertical"
-            android:padding="20dp">
+            android:paddingHorizontal="20dp"
+            android:paddingTop="20dp"
+            android:paddingBottom="10dp">
 
             <ImageView
                 android:id="@+id/alert_image"
@@ -30,11 +32,11 @@
 
             <TextView
                 android:id="@+id/alert_message"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:padding="7.5dp"
                 android:layout_gravity="center"
-                android:layout_marginBottom="10dp"
+                android:layout_marginBottom="7.5dp"
                 android:gravity="center"
                 android:textAlignment="center"
                 android:textColor="@color/black"
@@ -85,7 +87,7 @@
                     android:layout_marginEnd="7.5dp"
                     android:layout_weight="0.5"
                     android:paddingHorizontal="15dp"
-                    android:paddingVertical="20dp"
+                    android:paddingVertical="15dp"
                     android:backgroundTint="@color/colorPrimary"
                     android:text="Cancel"
                     android:textColor="@color/white"
@@ -98,7 +100,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="0.5"
                     android:paddingHorizontal="15dp"
-                    android:paddingVertical="20dp"
+                    android:paddingVertical="15dp"
                     android:backgroundTint="@color/colorSecondary"
                     android:text="OK"
                     android:textColor="@color/white"
