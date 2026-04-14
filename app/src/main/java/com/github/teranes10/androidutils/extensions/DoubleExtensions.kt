@@ -1,5 +1,6 @@
 package com.github.teranes10.androidutils.extensions
 
+import com.github.teranes10.androidutils.extensions.FloatExtensions.median
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -39,8 +40,8 @@ object DoubleExtensions {
     fun Collection<Double>.median(): Double {
         if (isEmpty()) return 0.0
 
-        val clean = this.filter { it.isFinite() }
-
+        val snapshot = this.toList()
+        val clean = snapshot.filter { it.isFinite() }
         if (clean.isEmpty()) return 0.0
 
         val sorted = clean.sorted()

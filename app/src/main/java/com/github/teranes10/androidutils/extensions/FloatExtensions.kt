@@ -25,8 +25,8 @@ object FloatExtensions {
     fun Collection<Float>.median(): Float {
         if (isEmpty()) return 0f
 
-        val clean = this.filter { it.isFinite() }
-
+        val snapshot = this.toList()
+        val clean = snapshot.filter { it.isFinite() }
         if (clean.isEmpty()) return 0f
 
         val sorted = clean.sorted()
