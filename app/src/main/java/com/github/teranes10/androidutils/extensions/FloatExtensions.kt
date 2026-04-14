@@ -22,7 +22,7 @@ object FloatExtensions {
         return this > 0.0 && this.isFinite()
     }
 
-    fun Collection<Float>.median(): Float? {
+    fun Collection<Float>.median(): Float {
         if (isEmpty()) return 0f
 
         val clean = this.filter { it.isFinite() }
