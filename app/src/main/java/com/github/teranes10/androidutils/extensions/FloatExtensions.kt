@@ -22,11 +22,20 @@ object FloatExtensions {
         return this > 0.0 && this.isFinite()
     }
 
-    fun Collection<Float>.median(): Float {
+    fun Collection<Float>.median(): Float? {
         if (isEmpty()) return 0f
-        val arr = toFloatArray()
-        arr.sort()
-        val mid = arr.size / 2
-        return if (arr.size % 2 == 0) (arr[mid - 1] + arr[mid]) / 2f else arr[mid]
+
+        val clean = this.filter { it.isFinite() }
+
+        if (clean.isEmpty()) return 0f
+
+        val sorted = clean.sorted()
+        val mid = sorted.size / 2
+
+        return if (sorted.size % 2 == 0) {
+            (sorted[mid - 1] + sorted[mid]) / 2f
+        } else {
+            sorted[mid]
+        }
     }
 }

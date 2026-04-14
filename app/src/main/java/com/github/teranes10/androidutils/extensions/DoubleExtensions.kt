@@ -38,9 +38,18 @@ object DoubleExtensions {
 
     fun Collection<Double>.median(): Double {
         if (isEmpty()) return 0.0
-        val arr = toDoubleArray()
-        arr.sort()
-        val mid = arr.size / 2
-        return if (arr.size % 2 == 0) (arr[mid - 1] + arr[mid]) / 2 else arr[mid]
+
+        val clean = this.filter { it.isFinite() }
+
+        if (clean.isEmpty()) return 0.0
+
+        val sorted = clean.sorted()
+        val mid = sorted.size / 2
+
+        return if (sorted.size % 2 == 0) {
+            (sorted[mid - 1] + sorted[mid]) / 2f
+        } else {
+            sorted[mid]
+        }
     }
 }

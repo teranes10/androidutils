@@ -1,6 +1,7 @@
 package com.github.teranes10.androidutils.extensions
 
 import android.content.SharedPreferences
+import org.json.JSONObject
 
 object SharedPreferenceExtensions {
 
@@ -34,5 +35,23 @@ object SharedPreferenceExtensions {
 
     fun SharedPreferences.getIntSet(key: String, default: Set<Int>): Set<Int> {
         return getStringSet(key, null)?.mapNotNull { it.toIntOrNull() }?.toSet() ?: default
+    }
+
+    fun SharedPreferences.Editor.putStringIntMap(key: String, map: Map<String, Int>): SharedPreferences.Editor {
+        val json = JSONObject()
+        map.forEach { (k, v) -> json.put(k, v) }
+        putString(key, json.toString())
+        return this
+    }
+
+    fun SharedPreferences.getStringIntMap(key: String): Map<String, Int>? {
+        val jsonStr = getString(key, null) ?: return null
+        val jsonObj = JSONObject(jsonStr)
+
+        return buildMap {
+            jsonObj.keys().forEach { name ->
+                put(name, jsonObj.getInt(name))
+            }
+        }
     }
 }

@@ -47,4 +47,8 @@ object ContextExtensions {
     fun Context.getUriForFile(file: File): Uri {
         return FileProvider.getUriForFile(this, "${packageName}.provider", file)
     }
+
+    val Context.screenWidth: Int get() = resources.displayMetrics.widthPixels
+    val Context.screenSwDp: Int get() = resources.configuration.smallestScreenWidthDp
+    val Context.isMobile: Boolean get() = screenSwDp < 600
 }
