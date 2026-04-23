@@ -17,6 +17,7 @@ import android.os.IBinder
 import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 
 abstract class ForegroundService : Service() {
 
@@ -135,7 +136,7 @@ abstract class ForegroundService : Service() {
                 extras?.let { putExtras(it) }
             }
 
-            context.startService(intent)
+            ContextCompat.startForegroundService(context, intent)
 
             if (!isServiceDeclared(context, service)) {
                 Log.e(TAG, "startService: service must be declared in the AndroidManifest.xml!")
@@ -148,7 +149,7 @@ abstract class ForegroundService : Service() {
                 extras?.let { putExtras(it) }
             }
 
-            context.startService(intent)
+            ContextCompat.startForegroundService(context, intent)
         }
 
         fun bindService(context: Context, service: Class<out ForegroundService>, connection: ServiceConnection) {
